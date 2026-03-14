@@ -40,6 +40,9 @@ interface Battery extends BaseConfigEntity {
   state_of_charge_unit_white_space?: boolean;
   state_of_charge_decimals?: number;
   show_state_of_charge?: boolean;
+  op_info?: {
+      entity: string;
+    };
   color_state_of_charge_value?: boolean | "production" | "consumption";
   color_circle: boolean | "production" | "consumption";
   color_value?: boolean;

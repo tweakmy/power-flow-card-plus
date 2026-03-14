@@ -129,5 +129,10 @@ export const batteryElement = (
         : ""}
     </div>
     <span class="label">${battery.name}</span>
+    ${entities.battery?.op_info?.entity
+    ? html`<span class="battery-op-info">
+        ${main.hass.states[entities.battery.op_info.entity].state}
+      </span>`
+    : null}
   </div>`;
 };
