@@ -249,6 +249,10 @@ export class PowerFlowCardPlus extends LitElement {
       mainEntity: typeof entities.battery?.entity === "object" ? entities.battery.entity.consumption : entities.battery?.entity,
       name: computeFieldName(this.hass, entities.battery, this.hass.localize("ui.panel.lovelace.cards.energy.energy_distribution.battery")),
       icon: computeFieldIcon(this.hass, entities.battery, "mdi:battery-high"),
+      op_info: {
+        entity: entities.battery?.op_info?.entity,
+        state: entities.battery?.op_info?.entity ? this.hass.states[entities.battery.op_info.entity]?.state : undefined,
+      },
       state_of_charge: {
         state: getBatteryStateOfCharge(this.hass, this._config),
         unit: entities?.battery?.state_of_charge_unit ?? "%",
