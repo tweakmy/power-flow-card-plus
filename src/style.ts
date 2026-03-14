@@ -567,14 +567,14 @@ export const styles = css`
   }
   
   .circle-container.battery .battery-op-info {
-    font-size: 12px;           /* readable one-liner */
-    font-weight: 500;           /* slightly bold */
+    position: absolute;   /* This is the magic line */
+    bottom: 0px;        /* Pushes it below the circle without moving the circle */
+    left: 50%;
+    transform: translateX(-50%); /* Centers it perfectly */
+    font-size: 10px;
+    font-weight: 500;
     color: var(--primary-text-color);
-    display: block;
-    margin-top: 2px;            /* small gap from battery label */
-    white-space: nowrap;        /* keep it on one line */
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 80px;            /* optional: match battery width */
+    white-space: nowrap;  /* Forces text to stay in one line */
+    pointer-events: none; /* Prevents the text from blocking clicks to the battery */
   }
 `;
