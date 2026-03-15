@@ -581,7 +581,7 @@ export const styles = css`
   .battery-temp {
     position: absolute;
     top: 3px;
-    right: 5px;
+    right: -45px;
     font-size: 10px;
     font-weight: 500;
     color: var(--primary-text-color);
@@ -590,7 +590,7 @@ export const styles = css`
   .inverter-temp {
     position: absolute;
     top: 16px;
-    right: 5px;
+    right: -45px;
     font-size: 10px;
     color: var(--secondary-text-color);
   }
