@@ -7,7 +7,7 @@ echo ==========================
 pnpm build
 
 echo Copying file...
-copy /Y dist\power-flow-card-plus.js .
+copy /Y "%~dp0\dist\power-flow-card-plus.js" "%~dp0"
 
 echo Build complete: %DATE% %TIME%
 pause
