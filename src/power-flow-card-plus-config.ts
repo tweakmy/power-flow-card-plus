@@ -43,6 +43,8 @@ interface Battery extends BaseConfigEntity {
   op_info?: {
       entity: string;
     };
+  battery_temp?: { entity: string };
+  inverter_temp?: { entity: string };  
   color_state_of_charge_value?: boolean | "production" | "consumption";
   color_circle: boolean | "production" | "consumption";
   color_value?: boolean;

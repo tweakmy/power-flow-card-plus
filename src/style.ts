@@ -577,4 +577,21 @@ export const styles = css`
     white-space: nowrap;  /* Forces text to stay in one line */
     pointer-events: none; /* Prevents the text from blocking clicks to the battery */
   }
+
+  .battery-temp {
+    position: absolute;
+    top: 3px;
+    right: 5px;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--primary-text-color);
+  }
+
+  .inverter-temp {
+    position: absolute;
+    top: 16px;
+    right: 5px;
+    font-size: 10px;
+    color: var(--secondary-text-color);
+  }
 `;

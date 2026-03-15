@@ -253,6 +253,18 @@ export class PowerFlowCardPlus extends LitElement {
         entity: entities.battery?.op_info?.entity,
         state: entities.battery?.op_info?.entity ? this.hass.states[entities.battery.op_info.entity]?.state : undefined,
       },
+      battery_temp: {
+        entity: entities.battery?.battery_temp?.entity,
+        state: entities.battery?.battery_temp?.entity
+          ? this.hass.states[entities.battery.battery_temp.entity]?.state
+          : undefined,
+      },
+      inverter_temp: {
+        entity: entities.battery?.inverter_temp?.entity,
+        state: entities.battery?.inverter_temp?.entity
+          ? this.hass.states[entities.battery.inverter_temp.entity]?.state
+          : undefined,
+      },
       state_of_charge: {
         state: getBatteryStateOfCharge(this.hass, this._config),
         unit: entities?.battery?.state_of_charge_unit ?? "%",

@@ -134,5 +134,16 @@ export const batteryElement = (
         ${main.hass.states[entities.battery.op_info.entity].state}
       </span>`
     : null}
+    ${entities.battery?.battery_temp?.entity
+    ? html`<span class="battery-temp">
+      Batt ${main.hass.states[entities.battery.battery_temp.entity]?.state}°
+    </span>`
+    : null}
+
+  ${entities.battery?.inverter_temp?.entity
+    ? html`<span class="inverter-temp">
+      Inv ${main.hass.states[entities.battery.inverter_temp.entity]?.state}°
+    </span>`
+    : null}
   </div>`;
 };
