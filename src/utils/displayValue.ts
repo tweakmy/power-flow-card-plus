@@ -28,11 +28,17 @@ export const displayValue = (
     watt_threshold?: number;
   }
 ): string => {
-  if (value === null) return "0";
+  if (value === null || value === undefined) return "N/A";
+
+  if (typeof value === "string" && ["unavailable", "unknown", "none", "null"].includes(value.toLowerCase())) {
+    return "N/A";
+  }
 
   if (!isNumberValue(value)) return value.toString();
 
   const valueInNumber = Number(value);
+
+  if (Number.isNaN(valueInNumber)) return "N/A";
 
   const isKW = unit === undefined && valueInNumber >= watt_threshold;
 

@@ -21,7 +21,7 @@
   },
   "homepage": "https://github.com/flixlix/power-flow-card-plus#readme",
   "scripts": {
-    "build": "rollup -c",
+    "build": "rollup -c && node scripts/deploy-to-samba.cjs",
     "lint": "eslint src/*",
     "release": "semantic-release",
     "start": "rollup -wc",

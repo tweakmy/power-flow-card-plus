@@ -96,6 +96,7 @@ export class PowerFlowCardPlus extends LitElement {
 
   public connectedCallback() {
     super.connectedCallback();
+    this.setAttribute("smiley", "build-ok-temp");
     this._tryConnectAll();
   }
 
@@ -594,7 +595,7 @@ export class PowerFlowCardPlus extends LitElement {
         style=${this._config.style_ha_card ? this._config.style_ha_card : ""}
       >
         <div
-          class="card-content ${this._config.full_size ? "full-size" : ""}"
+          class="card-content desktop-layout ${this._config.full_size ? "full-size" : ""}"
           id="power-flow-card-plus"
           style=${this._config.style_card_content ? this._config.style_card_content : ""}
         >
@@ -695,6 +696,50 @@ export class PowerFlowCardPlus extends LitElement {
             solar,
           })}
         </div>
+        <div class="card-content mobile-layout ${this._config.full_size ? "full-size" : ""}">
+          <div class="mobile-container">
+            ${solar.has
+              ? html`<div class="mobile-solar">
+                  ${solarElement(this, this._config, {
+                    entities,
+                    solar,
+                    templatesObj,
+                  })}
+                </div>`
+              : html``}
+
+            <div class="mobile-middle">
+              ${grid.has
+                ? gridElement(this, this._config, {
+                    entities,
+                    grid,
+                    templatesObj,
+                  })
+                : html`<div class="spacer"></div>`}
+
+              ${!entities.home?.hide
+                ? homeElement(this, this._config, {
+                    circleCircumference,
+                    entities,
+                    grid,
+                    home,
+                    homeBatteryCircumference,
+                    homeGridCircumference,
+                    homeNonFossilCircumference,
+                    homeSolarCircumference,
+                    newDur,
+                    templatesObj,
+                    homeUsageToDisplay,
+                    individual: individualObjs,
+                  })
+                : html`<div class="spacer"></div>`}
+            </div>
+
+            ${battery.has
+              ? html`<div class="mobile-battery">${batteryElement(this, this._config, { battery, entities })}</div>`
+              : html``}
+          </div>
+        </div>
         ${dashboardLinkElement(this._config, this.hass)}
       </ha-card>
     `;
@@ -702,6 +747,7 @@ export class PowerFlowCardPlus extends LitElement {
 
   protected updated(changedProps: PropertyValues): void {
     super.updated(changedProps);
+      
     if (!this._config || !this.hass) {
       return;
     }

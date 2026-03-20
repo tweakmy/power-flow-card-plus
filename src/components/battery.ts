@@ -2,6 +2,7 @@ import { html } from "lit";
 import { PowerFlowCardPlus } from "../power-flow-card-plus";
 import { ConfigEntities, PowerFlowCardPlusConfig } from "../power-flow-card-plus-config";
 import { displayValue } from "../utils/displayValue";
+import { offlineStr } from "../type";
 
 export const batteryElement = (
   main: PowerFlowCardPlus,
@@ -14,6 +15,13 @@ export const batteryElement = (
     entities: ConfigEntities;
   }
 ) => {
+  const getAuxValue = (entityId?: string, withDegree = false): string => {
+    if (!entityId) return "N/A";
+    const state = main.hass.states[entityId]?.state;
+    if (!state || offlineStr.includes(state as any)) return "N/A";
+    return withDegree ? `${state}°` : state;
+  };
+
   return html`<div class="circle-container battery">
     <div
       class="circle"
@@ -38,13 +46,13 @@ export const batteryElement = (
     >
       ${entities.battery?.battery_temp?.entity
       ? html`<span class="battery-temp">
-        Batt ${main.hass.states[entities.battery.battery_temp.entity]?.state}°
+        Batt ${getAuxValue(entities.battery.battery_temp.entity, true)}
       </span>`
       : null}
 
       ${entities.battery?.inverter_temp?.entity
       ? html`<span class="inverter-temp">
-        Inv ${main.hass.states[entities.battery.inverter_temp.entity]?.state}°
+        Inv ${getAuxValue(entities.battery.inverter_temp.entity, true)}
       </span>`
       : null}
 
@@ -143,7 +151,7 @@ export const batteryElement = (
     <span class="label">${battery.name}</span>
     ${entities.battery?.op_info?.entity
     ? html`<span class="battery-op-info">
-        ${main.hass.states[entities.battery.op_info.entity].state}
+        ${getAuxValue(entities.battery.op_info.entity)}
       </span>`
     : null}
   </div>`;

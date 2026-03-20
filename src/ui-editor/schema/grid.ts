@@ -62,6 +62,38 @@ export const gridSchema = [
     schema: powerOutageGridSchema,
   },
   {
+    title: "Desired Peak Demand Export Limit",
+    name: "desired_peak_demand_export_limit",
+    type: "expandable",
+    schema: [
+      {
+        type: "grid",
+        column_min_width: "200px",
+        schema: [
+          { name: "entity", label: "Entity", selector: { entity: {} } },
+          { name: "label", label: "Label", selector: { text: {} } },
+          { name: "unit", label: "Unit", selector: { text: {} } },
+        ],
+      },
+    ],
+  },
+  {
+    title: "Current Inverter Export Limit",
+    name: "current_inverter_export_limit",
+    type: "expandable",
+    schema: [
+      {
+        type: "grid",
+        column_min_width: "200px",
+        schema: [
+          { name: "entity", label: "Entity", selector: { entity: {} } },
+          { name: "label", label: "Label", selector: { text: {} } },
+          { name: "unit", label: "Unit", selector: { text: {} } },
+        ],
+      },
+    ],
+  },
+  {
     title: localize("editor.tap_action"),
     name: "",
     type: "expandable",

@@ -594,4 +594,102 @@ export const styles = css`
     font-size: 10px;
     color: var(--secondary-text-color);
   }
+
+  .circle-container.grid .grid-desired-export-limit {
+    position: absolute;
+    top: 3px;
+    left: -93px;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--primary-text-color);
+    white-space: nowrap;
+    cursor: var(--clickable-cursor);
+    text-align: right;
+  }
+
+  .circle-container.grid .grid-current-export-limit {
+    position: absolute;
+    top: 16px;
+    left: -72px;
+    font-size: 10px;
+    color: var(--secondary-text-color);
+    white-space: nowrap;
+    cursor: var(--clickable-cursor);
+    text-align: right;
+  }
+
+  @media (max-width: 768px) {
+    .circle-container.grid .grid-desired-export-limit,
+    .circle-container.grid .grid-current-export-limit {
+      left: -72px;
+    }
+  }
+
+  /* Mobile Layout */
+  @media (max-width: 768px) {
+    .card-content.desktop-layout {
+      display: none;
+    }
+
+    .card-content.mobile-layout {
+      display: block;
+      position: relative;
+      margin: 0 auto;
+    }
+
+    .mobile-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 16px max(12px, env(safe-area-inset-left)) 16px max(12px, env(safe-area-inset-right));
+    }
+
+    .mobile-container .circle {
+      width: 68px;
+      height: 68px;
+    }
+
+    .mobile-row {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .mobile-solar {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+    }
+
+    .mobile-middle {
+      display: flex;
+      width: 100%;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 6px;
+      box-sizing: border-box;
+      max-width: 420px;
+    }
+
+    .mobile-battery {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+    }
+
+    .mobile-middle .circle-container {
+      flex: 0 0 auto;
+    }
+  }
+
+  @media (min-width: 769px) {
+    .card-content.mobile-layout {
+      display: none;
+    }
+  }
 `;

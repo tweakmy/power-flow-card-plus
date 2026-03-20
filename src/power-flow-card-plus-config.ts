@@ -53,6 +53,16 @@ interface Battery extends BaseConfigEntity {
 
 interface Grid extends BaseConfigEntity {
   power_outage: GridPowerOutage;
+  desired_peak_demand_export_limit?: {
+    entity: string;
+    label?: string;
+    unit?: string;
+  };
+  current_inverter_export_limit?: {
+    entity: string;
+    label?: string;
+    unit?: string;
+  };
   secondary_info?: SecondaryInfoType;
   color_circle: boolean | "production" | "consumption";
   color_value?: boolean;
