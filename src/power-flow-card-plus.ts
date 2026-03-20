@@ -707,8 +707,7 @@ export class PowerFlowCardPlus extends LitElement {
                   })}
                 </div>`
               : html``}
-
-            <div class="mobile-middle">
+            <div class="mobile-grid-row">
               ${grid.has
                 ? gridElement(this, this._config, {
                     entities,
@@ -716,7 +715,9 @@ export class PowerFlowCardPlus extends LitElement {
                     templatesObj,
                   })
                 : html`<div class="spacer"></div>`}
+            </div>
 
+            <div class="mobile-home-row">
               ${!entities.home?.hide
                 ? homeElement(this, this._config, {
                     circleCircumference,

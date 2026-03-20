@@ -567,15 +567,15 @@ export const styles = css`
   }
   
   .circle-container.battery .battery-op-info {
-    position: absolute;   /* This is the magic line */
-    bottom: 0px;        /* Pushes it below the circle without moving the circle */
+    position: absolute;
+    bottom: 0px;
     left: 50%;
-    transform: translateX(-50%); /* Centers it perfectly */
-    font-size: 10px;
+    transform: translateX(-50%);
+    font-size: 12px;
     font-weight: 500;
     color: var(--primary-text-color);
-    white-space: nowrap;  /* Forces text to stay in one line */
-    pointer-events: none; /* Prevents the text from blocking clicks to the battery */
+    white-space: nowrap;
+    pointer-events: none;
   }
 
   .battery-temp {
@@ -641,49 +641,62 @@ export const styles = css`
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       gap: 18px;
       width: 100%;
       box-sizing: border-box;
-      padding: 16px max(12px, env(safe-area-inset-left)) 16px max(12px, env(safe-area-inset-right));
+      padding: 0 max(12px, env(safe-area-inset-left)) 16px max(12px, env(safe-area-inset-right));
     }
 
     .mobile-container .circle {
       width: 68px;
       height: 68px;
+      font-size: 8.4px;
+      line-height: 8.4px;
     }
 
-    .mobile-row {
-      display: flex;
-      justify-content: center;
-      gap: 20px;
-      align-items: center;
+    .mobile-container .battery-temp,
+    .mobile-container .inverter-temp,
+    .mobile-container .circle-container.grid .grid-desired-export-limit,
+    .mobile-container .circle-container.grid .grid-current-export-limit {
+      font-size: 7px;
     }
 
-    .mobile-solar {
-      width: 100%;
-      display: flex;
-      justify-content: center;
-    }
-
-    .mobile-middle {
-      display: flex;
-      width: 100%;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0 6px;
-      box-sizing: border-box;
-      max-width: 420px;
-    }
-
+    .mobile-row,
+    .mobile-solar,
+    .mobile-grid-row,
+    .mobile-home-row,
     .mobile-battery {
-      width: 100%;
       display: flex;
       justify-content: center;
+      align-items: center;
+      width: 100%;
     }
 
-    .mobile-middle .circle-container {
+    .mobile-container .circle-container {
       flex: 0 0 auto;
+      height: auto;
+      justify-content: flex-start;
+      position: static;
+    }
+
+    .mobile-container .label,
+    .mobile-container .battery-op-info {
+      max-width: none;
+    }
+
+    .mobile-container .label {
+      display: none;
+      min-height: auto;
+    }
+
+    .mobile-container .circle-container.battery .battery-op-info {
+      position: static;
+      display: block;
+      font-size: 6px;
+      margin-top: 2px;
+      transform: none;
+      text-align: center;
     }
   }
 
