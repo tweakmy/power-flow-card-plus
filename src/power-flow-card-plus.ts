@@ -5,8 +5,8 @@ import { html, LitElement, PropertyValues, TemplateResult } from "lit";
 import { customElement, property, query, state } from "lit/decorators.js";
 import { batteryElement } from "./components/battery";
 import { flowElement } from "./components/flows";
-import { gridElement } from "./components/grid";
-import { homeElement } from "./components/home";
+import { gridElement, getGridExportLimits } from "./components/grid";
+import { homeElement, getHomeInfo } from "./components/home";
 import { individualLeftBottomElement } from "./components/individualLeftBottomElement";
 import { individualLeftTopElement } from "./components/individualLeftTopElement";
 import { individualRightBottomElement } from "./components/individualRightBottomElement";
@@ -708,32 +708,56 @@ export class PowerFlowCardPlus extends LitElement {
                 </div>`
               : html``}
             <div class="mobile-grid-row">
-              ${grid.has
-                ? gridElement(this, this._config, {
-                    entities,
-                    grid,
-                    templatesObj,
-                  })
-                : html`<div class="spacer"></div>`}
+              <div class="mobile-grid-limits">
+                ${(() => {
+                  const limits = getGridExportLimits(this, entities);
+                  return html`${limits.desired
+                    ? html`<span class="grid-desired-export-limit">${limits.desired.label} ${limits.desired.value}${limits.desired.unit ? ` ${limits.desired.unit}` : ""}</span>`
+                    : html``}
+                  ${limits.current
+                    ? html`<span class="grid-current-export-limit">${limits.current.label} ${limits.current.value}${limits.current.unit ? ` ${limits.current.unit}` : ""}</span>`
+                    : html``}`;
+                })()}
+              </div>
+              <div class="mobile-grid-circle">
+                ${grid.has
+                  ? gridElement(this, this._config, {
+                      entities,
+                      grid,
+                      templatesObj,
+                      hideExportLimits: true,
+                    })
+                  : html`<div class="spacer"></div>`}
+              </div>
             </div>
 
             <div class="mobile-home-row">
-              ${!entities.home?.hide
-                ? homeElement(this, this._config, {
-                    circleCircumference,
-                    entities,
-                    grid,
-                    home,
-                    homeBatteryCircumference,
-                    homeGridCircumference,
-                    homeNonFossilCircumference,
-                    homeSolarCircumference,
-                    newDur,
-                    templatesObj,
-                    homeUsageToDisplay,
-                    individual: individualObjs,
-                  })
-                : html`<div class="spacer"></div>`}
+              <div class="mobile-home-info">
+                ${(() => {
+                  const homeInfo = getHomeInfo(home, homeUsageToDisplay, individualObjs);
+                  return html`${homeInfo.name ? html`<span class="home-label">${homeInfo.name}</span>` : html``}
+                  ${homeInfo.usage ? html`<span class="home-usage">${homeInfo.usage}</span>` : html``}`;
+                })()}
+              </div>
+              <div class="mobile-home-circle">
+                ${!entities.home?.hide
+                  ? homeElement(this, this._config, {
+                      circleCircumference,
+                      entities,
+                      grid,
+                      home,
+                      homeBatteryCircumference,
+                      homeGridCircumference,
+                      homeNonFossilCircumference,
+                      homeSolarCircumference,
+                      newDur,
+                      templatesObj,
+                      homeUsageToDisplay,
+                      individual: individualObjs,
+                      hideLabel: true,
+                    })
+                  : html`<div class="spacer"></div>`}
+              </div>
             </div>
 
             ${battery.has

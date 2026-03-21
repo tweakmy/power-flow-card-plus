@@ -5,10 +5,55 @@ import { generalSecondarySpan } from "./spans/generalSecondarySpan";
 import { offlineStr, TemplatesObj } from "../type";
 import { ConfigEntities, PowerFlowCardPlusConfig } from "../power-flow-card-plus-config";
 
+export interface GridExportLimits {
+  desired?: { label: string; value: string; unit: string };
+  current?: { label: string; value: string; unit: string };
+}
+
+export const getGridExportLimits = (
+  main: PowerFlowCardPlus,
+  entities: ConfigEntities
+): GridExportLimits => {
+  const desiredExportEntity = entities.grid?.desired_peak_demand_export_limit?.entity;
+  const currentExportEntity = entities.grid?.current_inverter_export_limit?.entity;
+  const desiredExportStateObj = desiredExportEntity ? main.hass.states[desiredExportEntity] : undefined;
+  const currentExportStateObj = currentExportEntity ? main.hass.states[currentExportEntity] : undefined;
+
+  const getSideValue = (stateObj?: { state?: string }) => {
+    if (!stateObj) return undefined;
+    if (offlineStr.includes(stateObj.state as any)) return "N/A";
+    return stateObj.state;
+  };
+
+  const result: GridExportLimits = {};
+
+  const desiredExportState = getSideValue(desiredExportStateObj);
+  if (desiredExportState !== undefined) {
+    const desiredExportUnit = entities.grid?.desired_peak_demand_export_limit?.unit || desiredExportStateObj?.attributes?.unit_of_measurement || "";
+    result.desired = {
+      label: entities.grid?.desired_peak_demand_export_limit?.label ?? "PeakDExpLim",
+      value: desiredExportState,
+      unit: desiredExportUnit,
+    };
+  }
+
+  const currentExportState = getSideValue(currentExportStateObj);
+  if (currentExportState !== undefined) {
+    const currentExportUnit = entities.grid?.current_inverter_export_limit?.unit || currentExportStateObj?.attributes?.unit_of_measurement || "";
+    result.current = {
+      label: entities.grid?.current_inverter_export_limit?.label ?? "InvExpLim",
+      value: currentExportState,
+      unit: currentExportUnit,
+    };
+  }
+
+  return result;
+};
+
 export const gridElement = (
   main: PowerFlowCardPlus,
   config: PowerFlowCardPlusConfig,
-  { entities, grid, templatesObj }: { entities: ConfigEntities; grid: any; templatesObj: TemplatesObj }
+  { entities, grid, templatesObj, hideExportLimits = false }: { entities: ConfigEntities; grid: any; templatesObj: TemplatesObj; hideExportLimits?: boolean }
 ) => {
   const desiredExportEntity = entities.grid?.desired_peak_demand_export_limit?.entity;
   const currentExportEntity = entities.grid?.current_inverter_export_limit?.entity;
@@ -113,7 +158,7 @@ export const gridElement = (
           </span>`
         : ""}
       ${grid.powerOutage?.isOutage && !grid.powerOutage?.entityGenerator ? html`<span class="grid power-outage">${grid.powerOutage.name}</span>` : ""}
-      ${desiredExportEntity && desiredExportState !== undefined
+      ${desiredExportEntity && desiredExportState !== undefined && !hideExportLimits
         ? html`<span
             class="grid-desired-export-limit"
             @click=${(e: { stopPropagation: () => void; target: HTMLElement }) => {
@@ -128,7 +173,7 @@ export const gridElement = (
             ${entities.grid?.desired_peak_demand_export_limit?.label ?? "PeakDExpLim"} ${desiredExportState}${desiredExportUnit ? ` ${desiredExportUnit}` : ""}
           </span>`
         : null}
-      ${currentExportEntity && currentExportState !== undefined
+      ${currentExportEntity && currentExportState !== undefined && !hideExportLimits
         ? html`<span
             class="grid-current-export-limit"
             @click=${(e: { stopPropagation: () => void; target: HTMLElement }) => {

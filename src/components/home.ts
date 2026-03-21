@@ -21,6 +21,19 @@ interface Home {
   individual: IndividualObject[];
 }
 
+export interface HomeInfo {
+  name: string;
+  usage: string;
+}
+
+export const getHomeInfo = (home: any, homeUsageToDisplay: string, individual: IndividualObject[]): HomeInfo => {
+  const showHomeLabel = individual.filter((i) => i.has).length <= 1;
+  return {
+    name: showHomeLabel ? home.name : "",
+    usage: homeUsageToDisplay,
+  };
+};
+
 export const homeElement = (
   main: PowerFlowCardPlus,
   config: PowerFlowCardPlusConfig,
@@ -35,7 +48,8 @@ export const homeElement = (
     homeNonFossilCircumference,
     homeGridCircumference,
     individual,
-  }: Home
+    hideLabel = false,
+  }: Home & { hideLabel?: boolean }
 ) => {
   const showHomeLabel = individual.filter((i) => i.has).length <= 1;
 
@@ -110,7 +124,7 @@ export const homeElement = (
       />
     </svg>
   </div>
-  ${!showHomeLabel ? html`<span class="label"></span>` : html`<span class="label">${home.name}</span>`}
+  ${!showHomeLabel || hideLabel ? html`<span class="label"></span>` : html`<span class="label">${home.name}</span>`}
 </div>
 </div>`;
 };
