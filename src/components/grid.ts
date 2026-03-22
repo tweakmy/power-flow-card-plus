@@ -55,6 +55,8 @@ export const gridElement = (
   config: PowerFlowCardPlusConfig,
   { entities, grid, templatesObj, hideExportLimits = false }: { entities: ConfigEntities; grid: any; templatesObj: TemplatesObj; hideExportLimits?: boolean }
 ) => {
+  const gridReturnArrowIcon = entities.grid?.invert_arrow_direction ? "mdi:arrow-right" : "mdi:arrow-left";
+  const gridConsumptionArrowIcon = entities.grid?.invert_arrow_direction ? "mdi:arrow-left" : "mdi:arrow-right";
   const desiredExportEntity = entities.grid?.desired_peak_demand_export_limit?.entity;
   const currentExportEntity = entities.grid?.current_inverter_export_limit?.entity;
   const desiredExportStateObj = desiredExportEntity ? main.hass.states[desiredExportEntity] : undefined;
@@ -118,7 +120,7 @@ export const gridElement = (
               }
             }}
           >
-            <ha-icon class="small" .icon=${"mdi:arrow-left"}></ha-icon>
+            <ha-icon class="small" .icon=${gridReturnArrowIcon}></ha-icon>
 
             ${displayValue(main.hass, config, grid.state.toGrid, {
               unit: grid.unit,
@@ -148,7 +150,7 @@ export const gridElement = (
               }
             }}
           >
-            <ha-icon class="small" .icon=${"mdi:arrow-right"}></ha-icon>
+            <ha-icon class="small" .icon=${gridConsumptionArrowIcon}></ha-icon>
             ${displayValue(main.hass, config, grid.state.fromGrid, {
               unit: grid.unit,
               unitWhiteSpace: grid.unit_white_space,

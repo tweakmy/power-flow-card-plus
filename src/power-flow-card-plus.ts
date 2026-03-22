@@ -15,7 +15,7 @@ import { html, LitElement, PropertyValues, svg, TemplateResult } from "lit";
 import { customElement, property, query, state } from "lit/decorators.js";
 import { batteryElement } from "./components/battery";
 import { flowElement } from "./components/flows";
-import { gridElement } from "./components/grid";
+import { getGridExportLimits, gridElement } from "./components/grid";
 import { homeElement } from "./components/home";
 import { individualLeftBottomElement } from "./components/individualLeftBottomElement";
 import { individualLeftTopElement } from "./components/individualLeftTopElement";
@@ -152,12 +152,27 @@ export class PowerFlowCardPlus extends LitElement {
       return;
     }
 
+    const normalizedConfig = (() => {
+      const cfg = { ...(config as unknown as Record<string, unknown>) };
+      const tapModPayload = cfg.tap_mod;
+
+      delete cfg["tap_,mod"];
+      delete cfg.browser_mod;
+      delete cfg.tap_mod;
+
+      if (tapModPayload !== undefined) {
+        cfg.browser_mod = tapModPayload;
+      }
+
+      return cfg as unknown as ActionConfig;
+    })();
+
     handleAction(
       event.target,
       this.hass!,
       {
         entity: entityId,
-        tap_action: config,
+        tap_action: normalizedConfig,
       },
       "tap"
     );
@@ -629,18 +644,37 @@ export class PowerFlowCardPlus extends LitElement {
     );
     const mobileSolarCy = Math.max(70, mobileVerticalTopPadding);
     const mobileVerticalStep = Math.round((mobileVerticalLayoutHeight - mobileSolarCy - mobileLabelY) / 3);
-    const mobileGridCx = mobileViewBoxWidth - mobileSidePadding - mobileR - 27;
+    const mobileGridCx = mobileSidePadding + mobileR;
     const mobileGridCy = mobileSolarCy + mobileVerticalStep;
-    const mobileHomeCx = mobileSidePadding + mobileR;
+    const mobileHomeCx = mobileViewBoxWidth - mobileSidePadding - mobileR - 27;
     const mobileHomeCy = mobileSolarCy + mobileVerticalStep * 2;
     const mobileSolarCx = (mobileHomeCx + mobileGridCx) / 2;
     const mobileBatteryCx = mobileSolarCx;
     const mobileBatteryCy = mobileSolarCy + mobileVerticalStep * 3;
+    const mobileGridEdgeTowardSolarX = mobileGridCx + (mobileGridCx < mobileSolarCx ? mobileR : -mobileR);
+    const mobileHomeEdgeTowardSolarX = mobileHomeCx + (mobileHomeCx < mobileSolarCx ? mobileR : -mobileR);
+    const mobileGridEdgeTowardHomeX = mobileGridCx + (mobileGridCx < mobileHomeCx ? mobileR : -mobileR);
+    const mobileHomeEdgeTowardGridX = mobileHomeCx + (mobileHomeCx < mobileGridCx ? mobileR : -mobileR);
+    const mobileHomeEdgeTowardBatteryX = mobileHomeCx + (mobileHomeCx < mobileBatteryCx ? mobileR : -mobileR);
+    const mobileGridEdgeTowardBatteryX = mobileGridCx + (mobileGridCx < mobileBatteryCx ? mobileR : -mobileR);
     const mobileSolarValue = displayValue(this.hass, this._config, solar.state.total || 0, {
       decimals: 1,
       watt_threshold: this._config.watt_threshold,
     });
     const mobileSecondaryTextColor = "#9ca3af";
+    const mobileResolveTextColor = (valueColor: string, ringColor: string) => {
+      const normalizedColor = valueColor.trim().toLowerCase();
+      if (
+        normalizedColor === "#000" ||
+        normalizedColor === "#000000" ||
+        normalizedColor === "black" ||
+        normalizedColor === "rgb(0,0,0)" ||
+        normalizedColor === "rgba(0,0,0,1)"
+      ) {
+        return ringColor;
+      }
+      return valueColor;
+    };
     const mobileLineOpacity = (power: number): number => {
       if (power > 0) return 1;
       const mode = this._config?.display_zero_lines?.mode;
@@ -669,8 +703,8 @@ export class PowerFlowCardPlus extends LitElement {
 
     const mobileBatteryIsCharging = (battery.state.toBattery || 0) > (battery.state.fromBattery || 0);
     const mobileBatteryColor = mobileBatteryIsCharging ? mobileBatteryInColor : mobileBatteryOutColor;
-    const mobileBatteryInTextColor = "#F06292";
-    const mobileBatteryOutTextColor = entities.battery?.color_value === false ? "#000" : mobileBatteryOutColor;
+    const mobileBatteryInTextColor = mobileResolveTextColor("#F06292", mobileBatteryInColor);
+    const mobileBatteryOutTextColor = mobileResolveTextColor(entities.battery?.color_value === false ? "#000" : mobileBatteryOutColor, mobileBatteryOutColor);
     const mobileBatteryCircleColor = mobileBatteryIsCharging ? "#F06292" : mobileBatteryOutTextColor;
     const mobileBatteryValueFontSize = Math.round(9 * mobileScale);
     const mobileBatteryValueLineGap = Math.round(11 * mobileScale);
@@ -703,6 +737,15 @@ export class PowerFlowCardPlus extends LitElement {
       decimals: getMobileBatteryDecimals(battery.state.fromBattery || 0),
       watt_threshold: this._config.watt_threshold,
     });
+    const mobileShowBatteryStateOfCharge = battery.state_of_charge.state !== null && entities.battery?.show_state_of_charge !== false;
+    const mobileBatteryStateOfChargeValue = displayValue(this.hass, this._config, battery.state_of_charge.state, {
+      unit: battery.state_of_charge.unit ?? "%",
+      unitWhiteSpace: battery.state_of_charge.unit_white_space,
+      decimals: battery.state_of_charge.decimals,
+      accept_negative: true,
+      watt_threshold: this._config.watt_threshold,
+    });
+    const mobileBatteryStateOfChargeY = mobileIconY - Math.round(6 * mobileScale) - 3;
     const mobileBatteryIconPath =
       battery.icon === "mdi:battery"
         ? mdiBattery
@@ -713,19 +756,37 @@ export class PowerFlowCardPlus extends LitElement {
         : battery.icon === "mdi:battery-outline"
         ? mdiBatteryOutline
         : mdiBatteryHigh;
+    const formatMobileAuxValue = (rawValue: unknown, withDegree = false): string => {
+      if (rawValue === undefined || rawValue === null) return "N/A";
+      const normalizedValue = String(rawValue).trim();
+      if (normalizedValue === "" || normalizedValue === "unknown" || normalizedValue === "unavailable") return "N/A";
+      return withDegree ? `${normalizedValue}°` : normalizedValue;
+    };
+    const mobileBatteryTempText = entities.battery?.battery_temp?.entity ? `Batt ${formatMobileAuxValue(battery.battery_temp.state, true)}` : null;
+    const mobileInverterTempText = entities.battery?.inverter_temp?.entity ? `Inv ${formatMobileAuxValue(battery.inverter_temp.state, true)}` : null;
+    const mobileBatteryTempLineGap = Math.round(9 * mobileScale);
+    const mobileBatteryTempX = mobileR + Math.round(8 * mobileScale) - 19;
+    const mobileBatteryTempY = -mobileR + Math.round(2 * mobileScale);
+    const mobileBatteryOpInfoRaw = entities.battery?.op_info?.entity ? formatMobileAuxValue(battery.op_info.state) : null;
+    const mobileBatteryOpInfoY = mobileR + Math.round(8 * mobileScale);
+    const mobileBatteryOpInfoBoxWidth = Math.round(140 * mobileScale);
+    const mobileBatteryOpInfoBoxHeight = Math.round(56 * mobileScale);
+    const mobileSolarTapTarget = solar.entity;
+    const mobileGridTapTarget = (() => {
+      const outageTarget = grid.powerOutage?.entityGenerator ?? entities.grid?.power_outage?.entity;
+      if (grid.powerOutage?.isOutage && outageTarget) return outageTarget;
+      if (typeof entities.grid?.entity === "string") return entities.grid.entity;
+      return entities.grid?.entity?.consumption || entities.grid?.entity?.production;
+    })();
+    const mobileBatteryProductionTarget = typeof entities.battery?.entity === "string" ? entities.battery.entity : entities.battery?.entity?.production;
+    const mobileBatteryConsumptionTarget = typeof entities.battery?.entity === "string" ? entities.battery.entity : entities.battery?.entity?.consumption;
+    const mobileBatteryStateOfChargeTarget = entities.battery?.state_of_charge ?? mobileBatteryProductionTarget;
+    const mobileBatteryTapTarget = entities.battery?.state_of_charge
+      ? entities.battery.state_of_charge
+      : typeof entities.battery?.entity === "string"
+      ? entities.battery.entity
+      : entities.battery?.entity?.production;
 
-    const mobileGridIsExporting = (grid.state.toGrid ?? 0) > 0;
-    const mobileGridEnergyColor = mobileGridIsExporting ? mobileGridReturnColor : mobileGridConsumptionColor;
-    const mobileGridIconColor =
-      entities.grid?.color_icon === "consumption"
-        ? mobileGridConsumptionColor
-        : entities.grid?.color_icon === "production"
-        ? mobileGridReturnColor
-        : entities.grid?.color_icon === true
-        ? (grid.state.fromGrid ?? 0) >= (grid.state.toGrid ?? 0)
-          ? mobileGridConsumptionColor
-          : mobileGridReturnColor
-        : "#000";
     const mobileGridCircleColor =
       entities.grid?.color_circle === "consumption"
         ? mobileGridConsumptionColor
@@ -736,8 +797,16 @@ export class PowerFlowCardPlus extends LitElement {
           ? mobileGridConsumptionColor
           : mobileGridReturnColor
         : mobileGridConsumptionColor;
-    const mobileGridReturnTextColor = entities.grid?.color_value === false ? "#000" : mobileGridReturnColor;
-    const mobileGridConsumptionTextColor = entities.grid?.color_value === false ? "#000" : mobileGridConsumptionColor;
+    const mobileGridIconColor = mobileGridCircleColor;
+    const mobileGridReturnTextColor = mobileResolveTextColor(entities.grid?.color_value === false ? "#000" : mobileGridReturnColor, mobileGridCircleColor);
+    const mobileGridConsumptionTextColor = mobileResolveTextColor(
+      entities.grid?.color_value === false ? "#000" : mobileGridConsumptionColor,
+      mobileGridCircleColor
+    );
+    const mobileSolarValueColor = mobileResolveTextColor("#000", mobileSolarColor);
+    const mobileGridValueColor = mobileResolveTextColor("#000", mobileGridCircleColor);
+    const mobileGridReturnArrow = entities.grid?.invert_arrow_direction ? "→" : "←";
+    const mobileGridConsumptionArrow = entities.grid?.invert_arrow_direction ? "←" : "→";
     const mobileGridValueFontSize = Math.round(9 * mobileScale);
     const mobileGridValueLineGap = Math.round(11 * mobileScale);
     const mobileShowGridReturn =
@@ -774,6 +843,20 @@ export class PowerFlowCardPlus extends LitElement {
       decimals: getMobileGridDecimals(grid.state.fromGrid || 0),
       watt_threshold: this._config.watt_threshold,
     });
+    const mobileGridExportLimits = getGridExportLimits(this, entities);
+    const mobileGridDesiredExportLine = mobileGridExportLimits.desired
+      ? `${mobileGridExportLimits.desired.label} ${mobileGridExportLimits.desired.value}${
+          mobileGridExportLimits.desired.unit ? ` ${mobileGridExportLimits.desired.unit}` : ""
+        }`
+      : null;
+    const mobileGridCurrentExportLine = mobileGridExportLimits.current
+      ? `${mobileGridExportLimits.current.label} ${mobileGridExportLimits.current.value}${
+          mobileGridExportLimits.current.unit ? ` ${mobileGridExportLimits.current.unit}` : ""
+        }`
+      : null;
+    const mobileGridExportTextX = -64;
+    const mobileGridDesiredExportY = -mobileR - Math.round(16 * mobileScale);
+    const mobileGridCurrentExportY = mobileR + Math.round(8 * mobileScale);
 
     const mobileHomeSourceColors: HomeSources = {
       battery: {
@@ -799,6 +882,7 @@ export class PowerFlowCardPlus extends LitElement {
     ) as keyof HomeSources;
 
     const mobileHomeColor = mobileHomeSourceColors[mobileHomeLargestSource].color;
+    const mobileHomeValueColor = mobileResolveTextColor("#000", mobileHomeColor);
     const parseHexColor = (hexColor: string) => {
       const normalizedHex = hexColor.replace("#", "");
       const expandedHex =
@@ -862,6 +946,84 @@ export class PowerFlowCardPlus extends LitElement {
         ? mobileHomeGridCircumference
         : mobileCircleCircumference - mobileHomeSolarCircumference - mobileHomeBatteryCircumference;
     const mobileHomeGridGapCircumference = mobileCircleCircumference - mobileHomeGridVisibleCircumference;
+
+    const mobileDotsEnabled = checkShouldShowDots(this._config);
+    const mobileSolarBatteryPathD = `M ${mobileSolarCx},${mobileSolarCy + mobileR} L ${mobileBatteryCx},${mobileBatteryCy - mobileR}`;
+    const mobileSolarGridPathD = `M ${mobileSolarCx},${mobileSolarCy + mobileR} L ${mobileSolarCx},${mobileGridCy} L ${mobileGridEdgeTowardSolarX},${mobileGridCy}`;
+    const mobileSolarHomePathD = `M ${mobileSolarCx},${mobileSolarCy + mobileR} L ${mobileSolarCx},${mobileHomeCy} L ${mobileHomeEdgeTowardSolarX},${mobileHomeCy}`;
+    const mobileGridHomePathD = `M ${mobileGridEdgeTowardHomeX},${mobileGridCy} L ${mobileSolarCx},${mobileGridCy} L ${mobileSolarCx},${mobileHomeCy} L ${mobileHomeEdgeTowardGridX},${mobileHomeCy}`;
+    const mobileBatteryHomePathD = `M ${mobileBatteryCx},${mobileBatteryCy - mobileR} L ${mobileBatteryCx},${mobileHomeCy} L ${mobileHomeEdgeTowardBatteryX},${mobileHomeCy}`;
+    const mobileBatteryGridPathD = `M ${mobileBatteryCx},${mobileBatteryCy - mobileR} L ${mobileBatteryCx},${mobileGridCy} L ${mobileGridEdgeTowardBatteryX},${mobileGridCy}`;
+
+    const mobileWirePower: Record<string, number> = {
+      solarToBattery: solar.has && battery.has ? Math.max(solar.state.toBattery || 0, 0) : 0,
+      solarToGrid: solar.has && grid.hasReturnToGrid ? Math.max(solar.state.toGrid || 0, 0) : 0,
+      solarToHome: solar.has && !entities.home?.hide ? Math.max(solar.state.toHome || 0, 0) : 0,
+      gridToHome: grid.has && !entities.home?.hide ? Math.max(grid.state.toHome || 0, 0) : 0,
+      batteryToHome: battery.has && !entities.home?.hide ? Math.max(battery.state.toHome || 0, 0) : 0,
+      gridToBattery: grid.has && battery.has ? Math.max(grid.state.toBattery || 0, 0) : 0,
+      batteryToGrid: grid.has && battery.has ? Math.max(battery.state.toGrid || 0, 0) : 0,
+    };
+
+    const mobileDominantWireKey = (Object.entries(mobileWirePower).reduce(
+      (winner, [wireKey, wirePower]) => (wirePower > winner.power ? { key: wireKey, power: wirePower } : winner),
+      { key: "", power: 0 }
+    ).key || null) as string | null;
+
+    const mobileOverlayWire = mobileDominantWireKey
+      ? {
+          solarToBattery: {
+            d: mobileSolarBatteryPathD,
+            color: mobileSolarColor,
+            dur: newDur.solarToBattery,
+            opacity: mobileLineOpacity(solar.state.toBattery || 0),
+            power: mobileWirePower.solarToBattery,
+          },
+          solarToGrid: {
+            d: mobileSolarGridPathD,
+            color: mobileGridReturnColor,
+            dur: newDur.solarToGrid,
+            opacity: mobileLineOpacity(solar.state.toGrid || 0),
+            power: mobileWirePower.solarToGrid,
+          },
+          solarToHome: {
+            d: mobileSolarHomePathD,
+            color: mobileSolarColor,
+            dur: newDur.solarToHome,
+            opacity: mobileLineOpacity(solar.state.toHome || 0),
+            power: mobileWirePower.solarToHome,
+          },
+          gridToHome: {
+            d: mobileGridHomePathD,
+            color: mobileGridConsumptionColor,
+            dur: newDur.gridToHome,
+            opacity: mobileLineOpacity(grid.state.toHome || 0),
+            power: mobileWirePower.gridToHome,
+          },
+          batteryToHome: {
+            d: mobileBatteryHomePathD,
+            color: mobileBatteryOutColor,
+            dur: newDur.batteryToHome,
+            opacity: mobileLineOpacity(battery.state.toHome || 0),
+            power: mobileWirePower.batteryToHome,
+          },
+          gridToBattery: {
+            d: mobileBatteryGridPathD,
+            color: mobileGridConsumptionColor,
+            dur: newDur.batteryGrid,
+            opacity: mobileLineOpacity(Math.max(grid.state.toBattery || 0, battery.state.toGrid || 0)),
+            power: mobileWirePower.gridToBattery,
+            reverse: true,
+          },
+          batteryToGrid: {
+            d: mobileBatteryGridPathD,
+            color: mobileGridReturnColor,
+            dur: newDur.batteryGrid,
+            opacity: mobileLineOpacity(Math.max(grid.state.toBattery || 0, battery.state.toGrid || 0)),
+            power: mobileWirePower.batteryToGrid,
+          },
+        }[mobileDominantWireKey]
+      : undefined;
 
     return html`
       <ha-card
@@ -1002,7 +1164,7 @@ export class PowerFlowCardPlus extends LitElement {
               ? svg`
                   <path
                     id="mobile-solar-grid-path"
-                    d="M ${mobileSolarCx},${mobileSolarCy + mobileR} L ${mobileSolarCx},${mobileGridCy} L ${mobileGridCx - mobileR},${mobileGridCy}"
+                    d="M ${mobileSolarCx},${mobileSolarCy + mobileR} L ${mobileSolarCx},${mobileGridCy} L ${mobileGridEdgeTowardSolarX},${mobileGridCy}"
                     style="fill: none; stroke: ${mobileGridReturnColor}; stroke-width: ${mobileStrokeWidth}; opacity: ${mobileLineOpacity(solar.state.toGrid || 0)};"
                   />
                   ${checkShouldShowDots(this._config) && (solar.state.toGrid || 0) > 0
@@ -1023,7 +1185,7 @@ export class PowerFlowCardPlus extends LitElement {
               ? svg`
                   <path
                     id="mobile-solar-home-path"
-                    d="M ${mobileSolarCx},${mobileSolarCy + mobileR} L ${mobileSolarCx},${mobileHomeCy} L ${mobileHomeCx + mobileR},${mobileHomeCy}"
+                    d="M ${mobileSolarCx},${mobileSolarCy + mobileR} L ${mobileSolarCx},${mobileHomeCy} L ${mobileHomeEdgeTowardSolarX},${mobileHomeCy}"
                     style="fill: none; stroke: ${mobileSolarColor}; stroke-width: ${mobileStrokeWidth}; opacity: ${mobileLineOpacity(solar.state.toHome || 0)};"
                   />
                   ${checkShouldShowDots(this._config) && (solar.state.toHome || 0) > 0
@@ -1040,9 +1202,116 @@ export class PowerFlowCardPlus extends LitElement {
                 `
               : svg``}
 
+            ${grid.has && !entities.home?.hide && showLine(this._config, grid.state.fromGrid || 0)
+              ? svg`
+                  <path
+                    id="mobile-grid-home-path"
+                    d="M ${mobileGridEdgeTowardHomeX},${mobileGridCy} L ${mobileSolarCx},${mobileGridCy} L ${mobileSolarCx},${mobileHomeCy} L ${mobileHomeEdgeTowardGridX},${mobileHomeCy}"
+                    style="fill: none; stroke: ${mobileGridConsumptionColor}; stroke-width: ${mobileStrokeWidth}; opacity: ${mobileLineOpacity(grid.state.toHome || 0)};"
+                  />
+                  ${checkShouldShowDots(this._config) && (grid.state.toHome || 0) > 0
+                    ? svg`<circle r="${mobileDotRadius}" style="fill: ${mobileGridConsumptionColor};">
+                        <animateMotion
+                          dur="${newDur.gridToHome}s"
+                          repeatCount="indefinite"
+                          calcMode="linear"
+                        >
+                          <mpath href="#mobile-grid-home-path" />
+                        </animateMotion>
+                      </circle>`
+                    : svg``}
+                `
+              : svg``}
+
+            ${battery.has && !entities.home?.hide && showLine(this._config, battery.state.toHome || 0)
+              ? svg`
+                  <path
+                    id="mobile-battery-home-path"
+                    d="M ${mobileBatteryCx},${mobileBatteryCy - mobileR} L ${mobileBatteryCx},${mobileHomeCy} L ${mobileHomeEdgeTowardBatteryX},${mobileHomeCy}"
+                    style="fill: none; stroke: ${mobileBatteryOutColor}; stroke-width: ${mobileStrokeWidth}; opacity: ${mobileLineOpacity(battery.state.toHome || 0)};"
+                  />
+                  ${checkShouldShowDots(this._config) && (battery.state.toHome || 0) > 0
+                    ? svg`<circle r="${mobileDotRadius}" style="fill: ${mobileBatteryOutColor};">
+                        <animateMotion
+                          dur="${newDur.batteryToHome}s"
+                          repeatCount="indefinite"
+                          calcMode="linear"
+                        >
+                          <mpath href="#mobile-battery-home-path" />
+                        </animateMotion>
+                      </circle>`
+                    : svg``}
+                `
+              : svg``}
+
+            ${grid.has && battery.has && showLine(this._config, Math.max(grid.state.toBattery || 0, battery.state.toGrid || 0))
+              ? svg`
+                  <path
+                    id="mobile-battery-grid-path"
+                    d="M ${mobileBatteryCx},${mobileBatteryCy - mobileR} L ${mobileBatteryCx},${mobileGridCy} L ${mobileGridEdgeTowardBatteryX},${mobileGridCy}"
+                    style="fill: none; stroke: ${(grid.state.toBattery || 0) > 0 ? mobileGridConsumptionColor : mobileGridReturnColor}; stroke-width: ${mobileStrokeWidth}; opacity: ${mobileLineOpacity(Math.max(grid.state.toBattery || 0, battery.state.toGrid || 0))};"
+                  />
+                  ${checkShouldShowDots(this._config) && (grid.state.toBattery || 0) > 0
+                    ? svg`<circle r="${mobileDotRadius}" style="fill: ${mobileGridConsumptionColor};">
+                        <animateMotion
+                          dur="${newDur.batteryGrid}s"
+                          repeatCount="indefinite"
+                          keyPoints="1;0"
+                          keyTimes="0;1"
+                          calcMode="linear"
+                        >
+                          <mpath href="#mobile-battery-grid-path" />
+                        </animateMotion>
+                      </circle>`
+                    : svg``}
+                  ${checkShouldShowDots(this._config) && (battery.state.toGrid || 0) > 0
+                    ? svg`<circle r="${mobileDotRadius}" style="fill: ${mobileGridReturnColor};">
+                        <animateMotion
+                          dur="${newDur.batteryGrid}s"
+                          repeatCount="indefinite"
+                          calcMode="linear"
+                        >
+                          <mpath href="#mobile-battery-grid-path" />
+                        </animateMotion>
+                      </circle>`
+                    : svg``}
+                `
+              : svg``}
+
+            ${mobileOverlayWire
+              ? svg`
+                  <path
+                    d="${mobileOverlayWire.d}"
+                    style="fill: none; stroke: ${mobileOverlayWire.color}; stroke-width: ${mobileStrokeWidth}; opacity: ${mobileOverlayWire.opacity};"
+                  />
+                  ${mobileDotsEnabled && mobileOverlayWire.power > 0
+                    ? svg`<circle r="${mobileDotRadius}" style="fill: ${mobileOverlayWire.color};">
+                        ${mobileOverlayWire.reverse
+                          ? svg`<animateMotion
+                              dur="${mobileOverlayWire.dur}s"
+                              repeatCount="indefinite"
+                              keyPoints="1;0"
+                              keyTimes="0;1"
+                              calcMode="linear"
+                              path="${mobileOverlayWire.d}"
+                            ></animateMotion>`
+                          : svg`<animateMotion
+                              dur="${mobileOverlayWire.dur}s"
+                              repeatCount="indefinite"
+                              calcMode="linear"
+                              path="${mobileOverlayWire.d}"
+                            ></animateMotion>`}
+                      </circle>`
+                    : svg``}
+                `
+              : svg``}
+
             ${solar.has
               ? svg`
-                  <g class="mobile-solar-group" transform="translate(${mobileSolarCx}, ${mobileSolarCy})">
+                  <g
+                    class="mobile-solar-group"
+                    transform="translate(${mobileSolarCx}, ${mobileSolarCy})"
+                  >
                     <g transform="translate(${mobileIconX}, ${mobileIconY}) scale(${mobileIconSize / 24})">
                       <path d="${mdiSolarPower}" style="fill: ${mobileSolarColor}; stroke: none;" />
                     </g>
@@ -1051,8 +1320,11 @@ export class PowerFlowCardPlus extends LitElement {
                       y="${mobileValueY}"
                       text-anchor="middle"
                       dominant-baseline="hanging"
-                      style="fill: #000;"
+                      style="fill: ${mobileSolarValueColor};"
                       font-size="${mobileFontSizeLg}"
+                      @click=${(e: { stopPropagation: () => void; target: HTMLElement }) => {
+                        this.openDetails(e, undefined, mobileSolarTapTarget);
+                      }}
                     >
                       ${mobileSolarValue}
                     </text>
@@ -1068,7 +1340,34 @@ export class PowerFlowCardPlus extends LitElement {
 
             ${grid.has
               ? svg`
-                  <g class="mobile-grid-group" transform="translate(${mobileGridCx}, ${mobileGridCy})">
+                  <g
+                    class="mobile-grid-group"
+                    transform="translate(${mobileGridCx}, ${mobileGridCy})"
+                  >
+                    ${mobileGridDesiredExportLine
+                      ? svg`<text
+                          x="${mobileGridExportTextX}"
+                          y="${mobileGridDesiredExportY}"
+                          text-anchor="start"
+                          dominant-baseline="hanging"
+                          style="fill: ${mobileSecondaryTextColor};"
+                          font-size="${mobileFontSizeSm}"
+                        >
+                          ${mobileGridDesiredExportLine}
+                        </text>`
+                      : svg``}
+                    ${mobileGridCurrentExportLine
+                      ? svg`<text
+                          x="${mobileGridExportTextX}"
+                          y="${mobileGridCurrentExportY}"
+                          text-anchor="start"
+                          dominant-baseline="hanging"
+                          style="fill: ${mobileSecondaryTextColor};"
+                          font-size="${mobileFontSizeSm}"
+                        >
+                          ${mobileGridCurrentExportLine}
+                        </text>`
+                      : svg``}
                     <g transform="translate(${mobileIconX}, ${mobileIconY}) scale(${mobileIconSize / 24})">
                       <path d="${mdiTransmissionTower}" style="fill: ${mobileGridIconColor}; stroke: none;" />
                     </g>
@@ -1077,18 +1376,21 @@ export class PowerFlowCardPlus extends LitElement {
                       y="${mobileValueY}"
                       text-anchor="middle"
                       dominant-baseline="hanging"
-                      style="fill: #000;"
+                      style="fill: ${mobileGridValueColor};"
                       font-size="${mobileGridValueFontSize}"
+                      @click=${(e: { stopPropagation: () => void; target: HTMLElement }) => {
+                        this.openDetails(e, undefined, mobileGridTapTarget);
+                      }}
                     >
                       ${mobileShowGridReturn && mobileShowGridConsumption
                         ? svg`
-                            <tspan x="0" dy="0" style="fill: ${mobileGridReturnTextColor};">← ${mobileGridReturnValue}</tspan>
-                            <tspan x="0" dy="${mobileGridValueLineGap}" style="fill: ${mobileGridConsumptionTextColor};">→ ${mobileGridConsumptionValue}</tspan>
+                            <tspan x="0" dy="0" style="fill: ${mobileGridReturnTextColor};">${mobileGridReturnArrow} ${mobileGridReturnValue}</tspan>
+                            <tspan x="0" dy="${mobileGridValueLineGap}" style="fill: ${mobileGridConsumptionTextColor};">${mobileGridConsumptionArrow} ${mobileGridConsumptionValue}</tspan>
                           `
                         : mobileShowGridReturn
-                        ? svg`<tspan x="0" dy="0" style="fill: ${mobileGridReturnTextColor};">← ${mobileGridReturnValue}</tspan>`
+                        ? svg`<tspan x="0" dy="0" style="fill: ${mobileGridReturnTextColor};">${mobileGridReturnArrow} ${mobileGridReturnValue}</tspan>`
                         : mobileShowGridConsumption
-                        ? svg`<tspan x="0" dy="0" style="fill: ${mobileGridConsumptionTextColor};">→ ${mobileGridConsumptionValue}</tspan>`
+                        ? svg`<tspan x="0" dy="0" style="fill: ${mobileGridConsumptionTextColor};">${mobileGridConsumptionArrow} ${mobileGridConsumptionValue}</tspan>`
                         : svg`<tspan x="0" dy="0">${displayValue(this.hass, this._config, 0, { watt_threshold: this._config.watt_threshold })}</tspan>`}
                     </text>
                     <circle
@@ -1111,7 +1413,7 @@ export class PowerFlowCardPlus extends LitElement {
                     y="${mobileValueY}"
                     text-anchor="middle"
                     dominant-baseline="hanging"
-                    style="fill: #000;"
+                    style="fill: ${mobileHomeValueColor};"
                       font-size="${mobileFontSizeLg}"
                   >
                     ${homeUsageToDisplay}
@@ -1176,35 +1478,166 @@ export class PowerFlowCardPlus extends LitElement {
 
             ${battery.has
               ? svg`
-                  <g class="mobile-battery-group" transform="translate(${mobileBatteryCx}, ${mobileBatteryCy})">
-                    <g transform="translate(${mobileIconX}, ${mobileIconY}) scale(${mobileIconSize / 24})">
+                  <g
+                    class="mobile-battery-group"
+                    transform="translate(${mobileBatteryCx}, ${mobileBatteryCy})"
+                  >
+                    <g
+                      transform="translate(${mobileIconX}, ${mobileIconY}) scale(${mobileIconSize / 24})"
+                      @click=${(e: { stopPropagation: () => void; target: HTMLElement }) => {
+                        this.openDetails(e, entities.battery?.tap_action, mobileBatteryTapTarget);
+                      }}
+                    >
                       <path d="${mobileBatteryIconPath}" style="fill: ${mobileBatteryColor}; stroke: none;" />
                     </g>
-                    <text
-                      x="0"
-                      y="${mobileValueY}"
-                      text-anchor="middle"
-                      dominant-baseline="hanging"
-                      style="fill: #000;"
-                      font-size="${mobileBatteryValueFontSize}"
-                    >
-                      ${mobileShowBatteryIn && mobileShowBatteryOut
-                        ? svg`
-                            <tspan x="0" dy="0" style="fill: ${mobileBatteryInTextColor};">↓ ${mobileBatteryInValue}</tspan>
-                            <tspan x="0" dy="${mobileBatteryValueLineGap}" style="fill: ${mobileBatteryOutTextColor};">↑ ${mobileBatteryOutValue}</tspan>
-                          `
-                        : mobileShowBatteryIn
-                        ? svg`<tspan x="0" dy="0" style="fill: ${mobileBatteryInTextColor};">↓ ${mobileBatteryInValue}</tspan>`
-                        : mobileShowBatteryOut
-                        ? svg`<tspan x="0" dy="0" style="fill: ${mobileBatteryOutTextColor};">↑ ${mobileBatteryOutValue}</tspan>`
-                        : svg`<tspan x="0" dy="0">${displayValue(this.hass, this._config, 0, { watt_threshold: this._config.watt_threshold })}</tspan>`}
-                    </text>
+                    ${mobileShowBatteryStateOfCharge
+                      ? svg`<text
+                          x="0"
+                          y="${mobileBatteryStateOfChargeY}"
+                          text-anchor="middle"
+                          dominant-baseline="hanging"
+                          style="fill: ${mobileBatteryColor};"
+                          font-size="${mobileBatteryValueFontSize}"
+                          @click=${(e: { stopPropagation: () => void; target: HTMLElement }) => {
+                            this.openDetails(e, undefined, mobileBatteryStateOfChargeTarget);
+                          }}
+                        >
+                          ${mobileBatteryStateOfChargeValue}
+                        </text>`
+                      : svg``}
+                    ${mobileShowBatteryIn && mobileShowBatteryOut
+                      ? svg`
+                          <text
+                            x="0"
+                            y="${mobileValueY}"
+                            text-anchor="middle"
+                            dominant-baseline="hanging"
+                            style="fill: ${mobileBatteryInTextColor};"
+                            font-size="${mobileBatteryValueFontSize}"
+                            @click=${(e: { stopPropagation: () => void; target: HTMLElement }) => {
+                              this.openDetails(e, undefined, mobileBatteryProductionTarget);
+                            }}
+                          >
+                            ↓ ${mobileBatteryInValue}
+                          </text>
+                          <text
+                            x="0"
+                            y="${mobileValueY + mobileBatteryValueLineGap}"
+                            text-anchor="middle"
+                            dominant-baseline="hanging"
+                            style="fill: ${mobileBatteryOutTextColor};"
+                            font-size="${mobileBatteryValueFontSize}"
+                            @click=${(e: { stopPropagation: () => void; target: HTMLElement }) => {
+                              this.openDetails(e, undefined, mobileBatteryConsumptionTarget);
+                            }}
+                          >
+                            ↑ ${mobileBatteryOutValue}
+                          </text>
+                        `
+                      : mobileShowBatteryIn
+                      ? svg`<text
+                          x="0"
+                          y="${mobileValueY}"
+                          text-anchor="middle"
+                          dominant-baseline="hanging"
+                          style="fill: ${mobileBatteryInTextColor};"
+                          font-size="${mobileBatteryValueFontSize}"
+                          @click=${(e: { stopPropagation: () => void; target: HTMLElement }) => {
+                            this.openDetails(e, undefined, mobileBatteryProductionTarget);
+                          }}
+                        >
+                          ↓ ${mobileBatteryInValue}
+                        </text>`
+                      : mobileShowBatteryOut
+                      ? svg`<text
+                          x="0"
+                          y="${mobileValueY}"
+                          text-anchor="middle"
+                          dominant-baseline="hanging"
+                          style="fill: ${mobileBatteryOutTextColor};"
+                          font-size="${mobileBatteryValueFontSize}"
+                          @click=${(e: { stopPropagation: () => void; target: HTMLElement }) => {
+                            this.openDetails(e, undefined, mobileBatteryConsumptionTarget);
+                          }}
+                        >
+                          ↑ ${mobileBatteryOutValue}
+                        </text>`
+                      : svg`<text
+                          x="0"
+                          y="${mobileValueY}"
+                          text-anchor="middle"
+                          dominant-baseline="hanging"
+                          style="fill: ${mobileBatteryCircleColor};"
+                          font-size="${mobileBatteryValueFontSize}"
+                        >
+                          ${displayValue(this.hass, this._config, 0, { watt_threshold: this._config.watt_threshold })}
+                        </text>`}
                     <circle
                       cx="0"
                       cy="0"
                       r="${mobileR}"
                       style="fill: none; stroke: ${mobileBatteryCircleColor}; stroke-width: ${mobileStrokeWidth};"
                     />
+                    ${mobileBatteryTempText
+                      ? svg`<text
+                          x="${mobileBatteryTempX}"
+                          y="${mobileBatteryTempY}"
+                          text-anchor="start"
+                          dominant-baseline="hanging"
+                          style="fill: ${mobileSecondaryTextColor};"
+                          font-size="${mobileFontSizeSm}"
+                          @click=${(e: { stopPropagation: () => void; target: HTMLElement }) => {
+                            this.openDetails(e, undefined, entities.battery?.battery_temp?.entity);
+                          }}
+                        >
+                          ${mobileBatteryTempText}
+                        </text>`
+                      : svg``}
+                    ${mobileInverterTempText
+                      ? svg`<text
+                          x="${mobileBatteryTempX}"
+                          y="${mobileBatteryTempY + mobileBatteryTempLineGap}"
+                          text-anchor="start"
+                          dominant-baseline="hanging"
+                          style="fill: ${mobileSecondaryTextColor};"
+                          font-size="${mobileFontSizeSm}"
+                          @click=${(e: { stopPropagation: () => void; target: HTMLElement }) => {
+                            this.openDetails(e, undefined, entities.battery?.inverter_temp?.entity);
+                          }}
+                        >
+                          ${mobileInverterTempText}
+                        </text>`
+                      : svg``}
+                    ${mobileBatteryOpInfoRaw
+                      ? svg`<foreignObject
+                          x="-${mobileBatteryOpInfoBoxWidth / 2}"
+                          y="${mobileBatteryOpInfoY}"
+                          width="${mobileBatteryOpInfoBoxWidth}"
+                          height="${mobileBatteryOpInfoBoxHeight}"
+                          @click=${(e: { stopPropagation: () => void; target: HTMLElement }) => {
+                            this.openDetails(e, undefined, entities.battery?.op_info?.entity);
+                          }}
+                        >
+                          <div
+                            xmlns="http://www.w3.org/1999/xhtml"
+                            style="
+                              color: ${mobileSecondaryTextColor};
+                              font-size: ${mobileFontSizeSm}px;
+                              line-height: 1.2;
+                              text-align: center;
+                              width: 100%;
+                              display: -webkit-box;
+                              -webkit-box-orient: vertical;
+                              -webkit-line-clamp: 3;
+                              overflow: hidden;
+                              word-break: break-word;
+                              overflow-wrap: anywhere;
+                            "
+                          >
+                            ${mobileBatteryOpInfoRaw}
+                          </div>
+                        </foreignObject>`
+                      : svg``}
                   </g>
                 `
               : svg``}

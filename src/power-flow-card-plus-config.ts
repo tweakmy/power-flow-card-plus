@@ -66,6 +66,7 @@ interface Grid extends BaseConfigEntity {
   secondary_info?: SecondaryInfoType;
   color_circle: boolean | "production" | "consumption";
   color_value?: boolean;
+  invert_arrow_direction?: boolean;
   color?: ComboEntity;
 }
 

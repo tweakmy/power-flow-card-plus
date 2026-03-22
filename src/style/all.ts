@@ -29,19 +29,6 @@ export const allDynamicStyles = (
 ) => {
   // Grid
   main.style.setProperty(
-    "--icon-grid-color",
-    grid.color.icon_type === "consumption"
-      ? "var(--energy-grid-consumption-color)"
-      : grid.color.icon_type === "production"
-      ? "var(--energy-grid-return-color)"
-      : grid.color.icon_type === true
-      ? (grid.state.fromGrid ?? 0) >= (grid.state.toGrid ?? 0)
-        ? "var(--energy-grid-consumption-color)"
-        : "var(--energy-grid-return-color)"
-      : "var(--primary-text-color)"
-  );
-
-  main.style.setProperty(
     "--circle-grid-color",
     grid.color.circle_type === "consumption"
       ? "var(--energy-grid-consumption-color)"
@@ -53,6 +40,7 @@ export const allDynamicStyles = (
         : "var(--energy-grid-return-color)"
       : "var(--energy-grid-consumption-color)"
   );
+  main.style.setProperty("--icon-grid-color", "var(--circle-grid-color)");
 
   if (grid.color.fromGrid !== undefined) {
     if (typeof grid.color.fromGrid === "object") {

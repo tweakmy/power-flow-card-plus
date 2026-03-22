@@ -27,6 +27,11 @@ const mainSchema = {
       label: "Color of Value",
       selector: { boolean: {} },
     },
+    {
+      name: "invert_arrow_direction",
+      label: "Invert Arrow Direction",
+      selector: { boolean: {} },
+    },
   ],
 };
 
