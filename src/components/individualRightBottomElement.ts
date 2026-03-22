@@ -9,6 +9,7 @@ import { PowerFlowCardPlus } from "../power-flow-card-plus";
 import { styleLine } from "../utils/styleLine";
 import { checkHasBottomIndividual } from "../utils/computeIndividualPosition";
 import { checkShouldShowDots } from "../utils/checkShouldShowDots";
+import { getRightIndividualFlowViewBox } from "../utils/flowViewBox";
 
 interface TopIndividual {
   newDur: NewDur;
@@ -32,6 +33,7 @@ export const individualRightBottomElement = (
   const duration = newDur.individual[indexOfIndividual] || 1.66;
 
   const hasBottomRow = !!battery?.has || checkHasBottomIndividual(individualObjs);
+  const viewBox = getRightIndividualFlowViewBox(hasBottomRow);
 
   return html`<div class="circle-container individual-bottom individual-right individual-right-bottom">
     <div
@@ -59,7 +61,7 @@ export const individualRightBottomElement = (
     ${showLine(config, individualObj.state || 0) && !config.entities.home?.hide
       ? html`
           <div class="right-individual-flow-container">
-            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" class="right-individual-flow">
+            <svg viewBox=${viewBox} xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" class="right-individual-flow">
               <path
                 id="individual-bottom-right-home"
                 class="${styleLine(individualObj.state || 0, config)}"

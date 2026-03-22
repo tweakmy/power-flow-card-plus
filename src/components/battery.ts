@@ -44,18 +44,6 @@ export const batteryElement = (
         }
       }}
     >
-      ${entities.battery?.battery_temp?.entity
-      ? html`<span class="battery-temp">
-        Batt ${getAuxValue(entities.battery.battery_temp.entity, true)}
-      </span>`
-      : null}
-
-      ${entities.battery?.inverter_temp?.entity
-      ? html`<span class="inverter-temp">
-        Inv ${getAuxValue(entities.battery.inverter_temp.entity, true)}
-      </span>`
-      : null}
-
       ${battery.state_of_charge.state !== null && entities.battery?.show_state_of_charge !== false
         ? html` <span
             @click=${(e: { stopPropagation: () => void; target: HTMLElement }) => {
@@ -148,6 +136,17 @@ export const batteryElement = (
           >`
         : ""}
     </div>
+    ${entities.battery?.battery_temp?.entity
+      ? html`<span class="battery-temp">
+        Batt ${getAuxValue(entities.battery.battery_temp.entity, true)}
+      </span>`
+      : null}
+
+    ${entities.battery?.inverter_temp?.entity
+      ? html`<span class="inverter-temp">
+        Inv ${getAuxValue(entities.battery.inverter_temp.entity, true)}
+      </span>`
+      : null}
     <span class="label">${battery.name}</span>
     ${entities.battery?.op_info?.entity
     ? html`<span class="battery-op-info">

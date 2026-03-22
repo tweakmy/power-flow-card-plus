@@ -6,19 +6,23 @@ import { styleLine } from "@/utils/styleLine";
 import { type Flows } from "./index";
 import { checkHasBottomIndividual, checkHasRightIndividual } from "@/utils/computeIndividualPosition";
 import { checkShouldShowDots } from "@/utils/checkShouldShowDots";
+import { getMainFlowViewBox } from "@/utils/flowViewBox";
 
 type FlowBatteryGridFlows = Pick<Flows, Exclude<keyof Flows, "solar">>;
 
 export const flowBatteryGrid = (config: PowerFlowCardPlusConfig, { battery, grid, individual, newDur }: FlowBatteryGridFlows) => {
+  const hasBottomRow = battery.has || checkHasBottomIndividual(individual);
+  const viewBox = getMainFlowViewBox(hasBottomRow);
+
   return grid.has && battery.has && showLine(config, Math.max(grid.state.toBattery || 0, battery.state.toGrid || 0))
     ? html`<div
         class="lines ${classMap({
-          high: battery.has || checkHasBottomIndividual(individual),
+          high: hasBottomRow,
           "individual1-individual2": !battery.has && individual.every((i) => i?.has),
           "multi-individual": checkHasRightIndividual(individual),
         })}"
       >
-        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" id="battery-grid-flow">
+        <svg viewBox=${viewBox} xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" id="battery-grid-flow">
           <path
             id="battery-grid"
             class=${styleLine(battery.state.toGrid || grid.state.toBattery || 0, config)}

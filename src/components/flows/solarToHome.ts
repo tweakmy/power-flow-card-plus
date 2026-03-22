@@ -6,17 +6,21 @@ import { styleLine } from "@/utils/styleLine";
 import { type Flows } from "./index";
 import { checkHasBottomIndividual, checkHasRightIndividual } from "@/utils/computeIndividualPosition";
 import { checkShouldShowDots } from "@/utils/checkShouldShowDots";
+import { getMainFlowViewBox } from "@/utils/flowViewBox";
 
 export const flowSolarToHome = (config: PowerFlowCardPlusConfig, { battery, grid, individual, solar, newDur }: Flows) => {
+  const hasBottomRow = battery.has || checkHasBottomIndividual(individual);
+  const viewBox = getMainFlowViewBox(hasBottomRow);
+
   return solar.has && showLine(config, solar.state.toHome || 0) && !config.entities.home?.hide
     ? html`<div
         class="lines ${classMap({
-          high: battery.has || checkHasBottomIndividual(individual),
+          high: hasBottomRow,
           "individual1-individual2": !battery.has && individual.every((i) => i?.has),
           "multi-individual": checkHasRightIndividual(individual),
         })}"
       >
-        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" id="solar-home-flow">
+        <svg viewBox=${viewBox} xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" id="solar-home-flow">
           <path
             id="solar"
             class="solar ${styleLine(solar.state.toHome || 0, config)}"

@@ -1,12 +1,22 @@
 /* eslint-disable wc/guard-super-call */
 import { ActionConfig, HomeAssistant, LovelaceCardEditor } from "custom-card-helpers";
+import {
+  mdiBattery,
+  mdiBatteryHigh,
+  mdiBatteryLow,
+  mdiBatteryMedium,
+  mdiBatteryOutline,
+  mdiHome,
+  mdiSolarPower,
+  mdiTransmissionTower,
+} from "@mdi/js";
 import { UnsubscribeFunc } from "home-assistant-js-websocket";
-import { html, LitElement, PropertyValues, TemplateResult } from "lit";
+import { html, LitElement, PropertyValues, svg, TemplateResult } from "lit";
 import { customElement, property, query, state } from "lit/decorators.js";
 import { batteryElement } from "./components/battery";
 import { flowElement } from "./components/flows";
-import { gridElement, getGridExportLimits } from "./components/grid";
-import { homeElement, getHomeInfo } from "./components/home";
+import { gridElement } from "./components/grid";
+import { homeElement } from "./components/home";
 import { individualLeftBottomElement } from "./components/individualLeftBottomElement";
 import { individualLeftTopElement } from "./components/individualLeftTopElement";
 import { individualRightBottomElement } from "./components/individualRightBottomElement";
@@ -64,7 +74,7 @@ export class PowerFlowCardPlus extends LitElement {
   @state() private _width = 0;
 
   @query("#battery-grid-flow") batteryGridFlow?: SVGSVGElement;
-  @query("#battery-home-flow") batteryToHomeFlow?: SVGSVGElement;
+  @query("#battery-home-flow") batteryToHomeFlow?: SVGSVGElement | HTMLCanvasElement;
   @query("#grid-home-flow") gridToHomeFlow?: SVGSVGElement;
   @query("#solar-battery-flow") solarToBatteryFlow?: SVGSVGElement;
   @query("#solar-grid-flow") solarToGridFlow?: SVGSVGElement;
@@ -588,6 +598,239 @@ export class PowerFlowCardPlus extends LitElement {
     const individualFieldRightTop = getTopRightIndividual(sortedIndividualObjects);
     const individualFieldRightBottom = getBottomRightIndividual(sortedIndividualObjects);
 
+    // Shared mobile SVG geometry (all relative to group center = 0,0)
+    const mobileR = 30;
+    const mobileIconSize = 20;
+    const mobileIconX = -(mobileIconSize / 2);  // -10
+    const mobileIconY = -18;
+    const mobileValueY = 7;
+    const mobileLabelY = mobileR + 6;  // 36
+
+    const mobileSolarCx = 100;
+    const mobileSolarCy = 40;
+
+    const mobileViewportWidth = this._width || 414;
+    const mobileHorizontalSpread = Math.max(35, Math.min(65, Math.round((mobileViewportWidth - 250) * 0.4)));
+    const mobileGridCx = 100 + mobileHorizontalSpread;
+    const mobileGridCy = 120;
+    const mobileHomeCx = 100 - mobileHorizontalSpread;
+    const mobileHomeCy = 200;
+    const mobileBatteryCx = 100;
+    const mobileBatteryCy = 280;
+    const mobileSecondaryTextColor = "#9ca3af";
+    const mobileSolarColor = "#ff9800";
+    const toHexFromRgbArray = (arr: number[]) =>
+      `#${arr
+        .slice(0, 3)
+        .map((channel) => Math.max(0, Math.min(255, Math.round(channel))).toString(16).padStart(2, "0"))
+        .join("")}`;
+    const normalizeMobileColor = (input: unknown, fallback: string) => {
+      if (Array.isArray(input) && input.length >= 3) return toHexFromRgbArray(input as number[]);
+      if (typeof input === "string" && input.trim() !== "") return input;
+      return fallback;
+    };
+    const mobileGridConsumptionColor = normalizeMobileColor(grid.color.fromGrid, "#488fc2");
+    const mobileGridReturnColor = normalizeMobileColor(grid.color.toGrid, "#8353d1");
+    const mobileBatteryInColor = normalizeMobileColor(battery.color.toBattery, "#a280db");
+    const mobileBatteryOutColor = normalizeMobileColor(battery.color.fromBattery, "#4db6ac");
+    const mobileNonFossilColor = "#0f9d58";
+
+    const mobileBatteryIsCharging = (battery.state.toBattery || 0) > (battery.state.fromBattery || 0);
+    const mobileBatteryColor = mobileBatteryIsCharging ? mobileBatteryInColor : mobileBatteryOutColor;
+    const mobileBatteryInTextColor = "#F06292";
+    const mobileBatteryOutTextColor = entities.battery?.color_value === false ? "#000" : mobileBatteryOutColor;
+    const mobileBatteryCircleColor = mobileBatteryIsCharging ? "#F06292" : mobileBatteryOutTextColor;
+    const mobileBatteryValueFontSize = 9;
+    const mobileBatteryValueLineGap = 11;
+    const mobileShowBatteryIn =
+      entities.battery?.display_state === "two_way" ||
+      entities.battery?.display_state === undefined ||
+      (entities.battery?.display_state === "one_way_no_zero" && (battery.state.toBattery || 0) > 0) ||
+      (entities.battery?.display_state === "one_way" && (battery.state.toBattery || 0) !== 0);
+    const mobileShowBatteryOut =
+      entities.battery?.display_state === "two_way" ||
+      entities.battery?.display_state === undefined ||
+      (entities.battery?.display_state === "one_way_no_zero" && (battery.state.fromBattery || 0) > 0) ||
+      (entities.battery?.display_state === "one_way" && ((battery.state.toBattery || 0) === 0 || (battery.state.fromBattery || 0) !== 0));
+    const getMobileBatteryDecimals = (value: number) => {
+      const configuredUnit = entities.battery?.unit_of_measurement;
+      const usesAutoKw = configuredUnit === undefined && value >= this._config.watt_threshold;
+      const usesExplicitKw = configuredUnit?.toLowerCase() === "kw";
+
+      return usesAutoKw || usesExplicitKw ? 1 : this._config.w_decimals;
+    };
+    const mobileBatteryInValue = displayValue(this.hass, this._config, battery.state.toBattery || 0, {
+      unit: entities.battery?.unit_of_measurement,
+      unitWhiteSpace: entities.battery?.unit_white_space,
+      decimals: getMobileBatteryDecimals(battery.state.toBattery || 0),
+      watt_threshold: this._config.watt_threshold,
+    });
+    const mobileBatteryOutValue = displayValue(this.hass, this._config, battery.state.fromBattery || 0, {
+      unit: entities.battery?.unit_of_measurement,
+      unitWhiteSpace: entities.battery?.unit_white_space,
+      decimals: getMobileBatteryDecimals(battery.state.fromBattery || 0),
+      watt_threshold: this._config.watt_threshold,
+    });
+    const mobileBatteryIconPath =
+      battery.icon === "mdi:battery"
+        ? mdiBattery
+        : battery.icon === "mdi:battery-medium"
+        ? mdiBatteryMedium
+        : battery.icon === "mdi:battery-low"
+        ? mdiBatteryLow
+        : battery.icon === "mdi:battery-outline"
+        ? mdiBatteryOutline
+        : mdiBatteryHigh;
+
+    const mobileGridIsExporting = (grid.state.toGrid ?? 0) > 0;
+    const mobileGridEnergyColor = mobileGridIsExporting ? mobileGridReturnColor : mobileGridConsumptionColor;
+    const mobileGridIconColor =
+      entities.grid?.color_icon === "consumption"
+        ? mobileGridConsumptionColor
+        : entities.grid?.color_icon === "production"
+        ? mobileGridReturnColor
+        : entities.grid?.color_icon === true
+        ? (grid.state.fromGrid ?? 0) >= (grid.state.toGrid ?? 0)
+          ? mobileGridConsumptionColor
+          : mobileGridReturnColor
+        : "#000";
+    const mobileGridCircleColor =
+      entities.grid?.color_circle === "consumption"
+        ? mobileGridConsumptionColor
+        : entities.grid?.color_circle === "production"
+        ? mobileGridReturnColor
+        : entities.grid?.color_circle === true
+        ? (grid.state.fromGrid ?? 0) >= (grid.state.toGrid ?? 0)
+          ? mobileGridConsumptionColor
+          : mobileGridReturnColor
+        : mobileGridConsumptionColor;
+    const mobileGridReturnTextColor = entities.grid?.color_value === false ? "#000" : mobileGridReturnColor;
+    const mobileGridConsumptionTextColor = entities.grid?.color_value === false ? "#000" : mobileGridConsumptionColor;
+    const mobileGridValueFontSize = 9;
+    const mobileGridValueLineGap = 11;
+    const mobileShowGridReturn =
+      (entities.grid?.display_state === "two_way" ||
+        entities.grid?.display_state === undefined ||
+        (entities.grid?.display_state === "one_way_no_zero" && (grid.state.toGrid ?? 0) > 0) ||
+        (entities.grid?.display_state === "one_way" && ((grid.state.fromGrid ?? 0) === 0) && (grid.state.toGrid ?? 0) !== 0)) &&
+      grid.state.toGrid !== null &&
+      !grid.powerOutage.isOutage;
+    const mobileShowGridConsumption =
+      ((entities.grid?.display_state === "two_way" ||
+        entities.grid?.display_state === undefined ||
+        (entities.grid?.display_state === "one_way_no_zero" && (grid.state.fromGrid ?? 0) > 0) ||
+        (entities.grid?.display_state === "one_way" && (grid.state.toGrid === null || grid.state.toGrid === 0))) &&
+        grid.state.fromGrid !== null &&
+        !grid.powerOutage.isOutage) ||
+      (grid.powerOutage.isOutage && !!grid.powerOutage.entityGenerator);
+    const getMobileGridDecimals = (value: number) => {
+      const configuredUnit = entities.grid?.unit_of_measurement;
+      const usesAutoKw = configuredUnit === undefined && value >= this._config.watt_threshold;
+      const usesExplicitKw = configuredUnit?.toLowerCase() === "kw";
+
+      return usesAutoKw || usesExplicitKw ? 1 : this._config.w_decimals;
+    };
+    const mobileGridReturnValue = displayValue(this.hass, this._config, grid.state.toGrid || 0, {
+      unit: entities.grid?.unit_of_measurement,
+      unitWhiteSpace: entities.grid?.unit_white_space,
+      decimals: getMobileGridDecimals(grid.state.toGrid || 0),
+      watt_threshold: this._config.watt_threshold,
+    });
+    const mobileGridConsumptionValue = displayValue(this.hass, this._config, grid.state.fromGrid || 0, {
+      unit: entities.grid?.unit_of_measurement,
+      unitWhiteSpace: entities.grid?.unit_white_space,
+      decimals: getMobileGridDecimals(grid.state.fromGrid || 0),
+      watt_threshold: this._config.watt_threshold,
+    });
+
+    const mobileHomeSourceColors: HomeSources = {
+      battery: {
+        value: homeBatteryCircumference,
+        color: mobileBatteryOutColor,
+      },
+      solar: {
+        value: homeSolarCircumference,
+        color: mobileSolarColor,
+      },
+      grid: {
+        value: homeGridCircumference,
+        color: mobileGridConsumptionColor,
+      },
+      gridNonFossil: {
+        value: homeNonFossilCircumference,
+        color: mobileNonFossilColor,
+      },
+    };
+
+    const mobileHomeLargestSource = Object.keys(mobileHomeSourceColors).reduce((a, b) =>
+      mobileHomeSourceColors[a].value > mobileHomeSourceColors[b].value ? a : b
+    ) as keyof HomeSources;
+
+    const mobileHomeColor = mobileHomeSourceColors[mobileHomeLargestSource].color;
+    const parseHexColor = (hexColor: string) => {
+      const normalizedHex = hexColor.replace("#", "");
+      const expandedHex =
+        normalizedHex.length === 3
+          ? normalizedHex
+              .split("")
+              .map((char) => `${char}${char}`)
+              .join("")
+          : normalizedHex;
+
+      return {
+        r: parseInt(expandedHex.slice(0, 2), 16),
+        g: parseInt(expandedHex.slice(2, 4), 16),
+        b: parseInt(expandedHex.slice(4, 6), 16),
+      };
+    };
+    const toHexColor = ({ r, g, b }: { r: number; g: number; b: number }) =>
+      `#${[r, g, b]
+        .map((channel) => Math.max(0, Math.min(255, Math.round(channel))).toString(16).padStart(2, "0"))
+        .join("")}`;
+    const blendWeightedMobileColor = (sources: Array<{ value: number; color: string }>, fallbackColor: string) => {
+      const activeSources = sources.filter((source) => source.value > 0);
+      const totalValue = activeSources.reduce((sum, source) => sum + source.value, 0);
+
+      if (totalValue <= 0) return fallbackColor;
+
+      const blendedRgb = activeSources.reduce(
+        (accumulator, source) => {
+          const weight = source.value / totalValue;
+          const rgb = parseHexColor(source.color);
+
+          return {
+            r: accumulator.r + rgb.r * weight,
+            g: accumulator.g + rgb.g * weight,
+            b: accumulator.b + rgb.b * weight,
+          };
+        },
+        { r: 0, g: 0, b: 0 }
+      );
+
+      return toHexColor(blendedRgb);
+    };
+    const mobileHomeIconColor = blendWeightedMobileColor(
+      [
+        { value: homeSolarCircumference || 0, color: mobileSolarColor },
+        { value: homeBatteryCircumference || 0, color: mobileBatteryOutColor },
+        { value: homeNonFossilCircumference || 0, color: mobileNonFossilColor },
+        { value: homeGridCircumference || 0, color: mobileGridConsumptionColor },
+      ],
+      mobileHomeColor
+    );
+    const mobileCircleCircumference = 2 * Math.PI * mobileR;
+    const toMobileCircumference = (value: number) =>
+      ((Number.isFinite(value) ? value : 0) / circleCircumference) * mobileCircleCircumference;
+    const mobileHomeSolarCircumference = toMobileCircumference(homeSolarCircumference || 0);
+    const mobileHomeBatteryCircumference = toMobileCircumference(homeBatteryCircumference || 0);
+    const mobileHomeNonFossilCircumference = toMobileCircumference(homeNonFossilCircumference || 0);
+    const mobileHomeGridCircumference = toMobileCircumference(homeGridCircumference || 0);
+    const mobileHomeGridVisibleCircumference =
+      mobileHomeGridCircumference > 0
+        ? mobileHomeGridCircumference
+        : mobileCircleCircumference - mobileHomeSolarCircumference - mobileHomeBatteryCircumference;
+    const mobileHomeGridGapCircumference = mobileCircleCircumference - mobileHomeGridVisibleCircumference;
+
     return html`
       <ha-card
         .header=${this._config.title}
@@ -697,73 +940,209 @@ export class PowerFlowCardPlus extends LitElement {
           })}
         </div>
         <div class="card-content mobile-layout ${this._config.full_size ? "full-size" : ""}">
-          <div class="mobile-container">
+          <svg
+            viewBox="0 0 200 800"
+            xmlns="http://www.w3.org/2000/svg"
+            preserveAspectRatio="xMidYMin meet"
+            style="display:block;width:100%;height:auto;"
+          >
             ${solar.has
-              ? html`<div class="mobile-solar">
-                  ${solarElement(this, this._config, {
-                    entities,
-                    solar,
-                    templatesObj,
-                  })}
-                </div>`
-              : html``}
-            <div class="mobile-grid-row">
-              <div class="mobile-grid-limits">
-                ${(() => {
-                  const limits = getGridExportLimits(this, entities);
-                  return html`${limits.desired
-                    ? html`<span class="grid-desired-export-limit">${limits.desired.label} ${limits.desired.value}${limits.desired.unit ? ` ${limits.desired.unit}` : ""}</span>`
-                    : html``}
-                  ${limits.current
-                    ? html`<span class="grid-current-export-limit">${limits.current.label} ${limits.current.value}${limits.current.unit ? ` ${limits.current.unit}` : ""}</span>`
-                    : html``}`;
-                })()}
-              </div>
-              <div class="mobile-grid-circle">
-                ${grid.has
-                  ? gridElement(this, this._config, {
-                      entities,
-                      grid,
-                      templatesObj,
-                      hideExportLimits: true,
-                    })
-                  : html`<div class="spacer"></div>`}
-              </div>
-            </div>
+              ? svg`
+                  <g class="mobile-solar-group" transform="translate(${mobileSolarCx}, ${mobileSolarCy})">
+                    <g transform="translate(${mobileIconX}, ${mobileIconY}) scale(${mobileIconSize / 24})">
+                      <path d="${mdiSolarPower}" style="fill: ${mobileSolarColor}; stroke: none;" />
+                    </g>
+                    <text
+                      x="0"
+                      y="${mobileValueY}"
+                      text-anchor="middle"
+                      dominant-baseline="hanging"
+                      style="fill: #000;"
+                      font-size="12"
+                    >
+                      ${displayValue(this.hass, this._config, solar.state.total || 0, {
+                        decimals: this._config.w_decimals,
+                        watt_threshold: this._config.watt_threshold,
+                      })}
+                    </text>
+                    <circle
+                      cx="0"
+                      cy="0"
+                      r="${mobileR}"
+                      style="fill: none; stroke: ${mobileSolarColor}; stroke-width: 2;"
+                    />
+                    <text
+                      x="0"
+                      y="${mobileLabelY}"
+                      text-anchor="middle"
+                      dominant-baseline="hanging"
+                      style="fill: ${mobileSecondaryTextColor};"
+                      font-size="10"
+                    >${solar.name}</text>
+                  </g>
+                `
+              : svg``}
 
-            <div class="mobile-home-row">
-              <div class="mobile-home-info">
-                ${(() => {
-                  const homeInfo = getHomeInfo(home, homeUsageToDisplay, individualObjs);
-                  return html`${homeInfo.name ? html`<span class="home-label">${homeInfo.name}</span>` : html``}
-                  ${homeInfo.usage ? html`<span class="home-usage">${homeInfo.usage}</span>` : html``}`;
-                })()}
-              </div>
-              <div class="mobile-home-circle">
-                ${!entities.home?.hide
-                  ? homeElement(this, this._config, {
-                      circleCircumference,
-                      entities,
-                      grid,
-                      home,
-                      homeBatteryCircumference,
-                      homeGridCircumference,
-                      homeNonFossilCircumference,
-                      homeSolarCircumference,
-                      newDur,
-                      templatesObj,
-                      homeUsageToDisplay,
-                      individual: individualObjs,
-                      hideLabel: true,
-                    })
-                  : html`<div class="spacer"></div>`}
-              </div>
-            </div>
+            ${grid.has
+              ? svg`
+                  <g class="mobile-grid-group" transform="translate(${mobileGridCx}, ${mobileGridCy})">
+                    <g transform="translate(${mobileIconX}, ${mobileIconY}) scale(${mobileIconSize / 24})">
+                      <path d="${mdiTransmissionTower}" style="fill: ${mobileGridIconColor}; stroke: none;" />
+                    </g>
+                    <text
+                      x="0"
+                      y="${mobileValueY}"
+                      text-anchor="middle"
+                      dominant-baseline="hanging"
+                      style="fill: #000;"
+                      font-size="${mobileGridValueFontSize}"
+                    >
+                      ${mobileShowGridReturn && mobileShowGridConsumption
+                        ? svg`
+                            <tspan x="0" dy="0" style="fill: ${mobileGridReturnTextColor};">← ${mobileGridReturnValue}</tspan>
+                            <tspan x="0" dy="${mobileGridValueLineGap}" style="fill: ${mobileGridConsumptionTextColor};">→ ${mobileGridConsumptionValue}</tspan>
+                          `
+                        : mobileShowGridReturn
+                        ? svg`<tspan x="0" dy="0" style="fill: ${mobileGridReturnTextColor};">← ${mobileGridReturnValue}</tspan>`
+                        : mobileShowGridConsumption
+                        ? svg`<tspan x="0" dy="0" style="fill: ${mobileGridConsumptionTextColor};">→ ${mobileGridConsumptionValue}</tspan>`
+                        : svg`<tspan x="0" dy="0">${displayValue(this.hass, this._config, 0, { watt_threshold: this._config.watt_threshold })}</tspan>`}
+                    </text>
+                    <circle
+                      cx="0"
+                      cy="0"
+                      r="${mobileR}"
+                      style="fill: none; stroke: ${mobileGridCircleColor}; stroke-width: 2;"
+                    />
+                    <text
+                      x="0"
+                      y="${mobileLabelY}"
+                      text-anchor="middle"
+                      dominant-baseline="hanging"
+                      style="fill: ${mobileSecondaryTextColor};"
+                      font-size="10"
+                    >${grid.name}</text>
+                  </g>
+                `
+              : svg``}
+
+            ${svg`
+                <g class="mobile-home-group" transform="translate(${mobileHomeCx}, ${mobileHomeCy})">
+                  <g transform="translate(${mobileIconX}, ${mobileIconY}) scale(${mobileIconSize / 24})">
+                    <path d="${mdiHome}" style="fill: ${mobileHomeIconColor}; stroke: none;" />
+                  </g>
+                  <text
+                    x="0"
+                    y="${mobileValueY}"
+                    text-anchor="middle"
+                    dominant-baseline="hanging"
+                    style="fill: #000;"
+                    font-size="12"
+                  >
+                    ${homeUsageToDisplay}
+                  </text>
+                  ${mobileHomeSolarCircumference > 0
+                    ? svg`<circle
+                        cx="0"
+                        cy="0"
+                        r="${mobileR}"
+                        stroke-dasharray="${mobileHomeSolarCircumference} ${mobileCircleCircumference - mobileHomeSolarCircumference}"
+                        stroke-dashoffset="-${mobileCircleCircumference - mobileHomeSolarCircumference}"
+                        shape-rendering="geometricPrecision"
+                        style="fill: none; stroke: ${mobileSolarColor}; stroke-width: 2;"
+                      />`
+                    : svg``}
+                  ${mobileHomeBatteryCircumference > 0
+                    ? svg`<circle
+                        cx="0"
+                        cy="0"
+                        r="${mobileR}"
+                        stroke-dasharray="${mobileHomeBatteryCircumference} ${mobileCircleCircumference - mobileHomeBatteryCircumference}"
+                        stroke-dashoffset="-${mobileCircleCircumference - mobileHomeBatteryCircumference - mobileHomeSolarCircumference}"
+                        shape-rendering="geometricPrecision"
+                        style="fill: none; stroke: ${mobileBatteryOutColor}; stroke-width: 2;"
+                      />`
+                    : svg``}
+                  ${mobileHomeNonFossilCircumference > 0
+                    ? svg`<circle
+                        cx="0"
+                        cy="0"
+                        r="${mobileR}"
+                        stroke-dasharray="${mobileHomeNonFossilCircumference} ${mobileCircleCircumference - mobileHomeNonFossilCircumference}"
+                        stroke-dashoffset="-${
+                          mobileCircleCircumference -
+                          mobileHomeNonFossilCircumference -
+                          mobileHomeBatteryCircumference -
+                          mobileHomeSolarCircumference
+                        }"
+                        shape-rendering="geometricPrecision"
+                        style="fill: none; stroke: ${mobileNonFossilColor}; stroke-width: 2;"
+                      />`
+                    : svg``}
+                  <circle
+                    cx="0"
+                    cy="0"
+                    r="${mobileR}"
+                    stroke-dasharray="${mobileHomeGridVisibleCircumference} ${mobileHomeGridGapCircumference}"
+                    stroke-dashoffset="0"
+                    shape-rendering="geometricPrecision"
+                    style="fill: none; stroke: ${mobileGridConsumptionColor}; stroke-width: 2;"
+                  />
+                  <text
+                    x="0"
+                    y="${mobileLabelY}"
+                    text-anchor="middle"
+                    dominant-baseline="hanging"
+                    style="fill: ${mobileSecondaryTextColor};"
+                    font-size="10"
+                  >${home.name}</text>
+                </g>
+              `}
 
             ${battery.has
-              ? html`<div class="mobile-battery">${batteryElement(this, this._config, { battery, entities })}</div>`
-              : html``}
-          </div>
+              ? svg`
+                  <g class="mobile-battery-group" transform="translate(${mobileBatteryCx}, ${mobileBatteryCy})">
+                    <g transform="translate(${mobileIconX}, ${mobileIconY}) scale(${mobileIconSize / 24})">
+                      <path d="${mobileBatteryIconPath}" style="fill: ${mobileBatteryColor}; stroke: none;" />
+                    </g>
+                    <text
+                      x="0"
+                      y="${mobileValueY}"
+                      text-anchor="middle"
+                      dominant-baseline="hanging"
+                      style="fill: #000;"
+                      font-size="${mobileBatteryValueFontSize}"
+                    >
+                      ${mobileShowBatteryIn && mobileShowBatteryOut
+                        ? svg`
+                            <tspan x="0" dy="0" style="fill: ${mobileBatteryInTextColor};">↓ ${mobileBatteryInValue}</tspan>
+                            <tspan x="0" dy="${mobileBatteryValueLineGap}" style="fill: ${mobileBatteryOutTextColor};">↑ ${mobileBatteryOutValue}</tspan>
+                          `
+                        : mobileShowBatteryIn
+                        ? svg`<tspan x="0" dy="0" style="fill: ${mobileBatteryInTextColor};">↓ ${mobileBatteryInValue}</tspan>`
+                        : mobileShowBatteryOut
+                        ? svg`<tspan x="0" dy="0" style="fill: ${mobileBatteryOutTextColor};">↑ ${mobileBatteryOutValue}</tspan>`
+                        : svg`<tspan x="0" dy="0">${displayValue(this.hass, this._config, 0, { watt_threshold: this._config.watt_threshold })}</tspan>`}
+                    </text>
+                    <circle
+                      cx="0"
+                      cy="0"
+                      r="${mobileR}"
+                      style="fill: none; stroke: ${mobileBatteryCircleColor}; stroke-width: 2;"
+                    />
+                    <text
+                      x="0"
+                      y="${mobileLabelY}"
+                      text-anchor="middle"
+                      dominant-baseline="hanging"
+                      style="fill: ${mobileSecondaryTextColor};"
+                      font-size="10"
+                    >${battery.name}</text>
+                  </g>
+                `
+              : svg``}
+
+          </svg>
         </div>
         ${dashboardLinkElement(this._config, this.hass)}
       </ha-card>
@@ -782,6 +1161,56 @@ export class PowerFlowCardPlus extends LitElement {
     this._width = parseInt(widthStr.replace("px", ""), 10);
 
     this._tryConnectAll();
+    this._drawMobileFlowLines();
+  }
+
+  private _drawMobileFlowLines() {
+    // Only draw in mobile view
+    if (this._width > 1024) return;
+
+    const canvas = this.batteryToHomeFlow as HTMLCanvasElement;
+    if (!canvas || !(canvas instanceof HTMLCanvasElement)) return;
+
+    // Get grid and home circle elements to calculate line position
+    const gridCircle = this.shadowRoot?.querySelector(".mobile-circles-container .circle-container:nth-child(3)") as HTMLElement;
+    const homeCircle = this.shadowRoot?.querySelector(".mobile-circles-container .circle-container:nth-child(5)") as HTMLElement;
+    
+    if (!gridCircle || !homeCircle) return;
+
+    // Set canvas dimensions to match container
+    const container = this.shadowRoot?.querySelector(".mobile-circles-container") as HTMLElement;
+    if (!container) return;
+
+    canvas.width = container.offsetWidth;
+    canvas.height = 160 + 18; // one row height + gap
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw line from grid circle center to home circle center
+    const gridRect = gridCircle.getBoundingClientRect();
+    const homeRect = homeCircle.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+
+    // Calculate relative positions within canvas
+    const gridCenterX = (gridRect.left - containerRect.left) + gridRect.width / 2;
+    const gridCenterY = (gridRect.top - containerRect.top) + gridRect.height / 2;
+    const homeCenterX = (homeRect.left - containerRect.left) + homeRect.width / 2;
+    const homeCenterY = (homeRect.top - containerRect.top) + homeRect.height / 2;
+
+    // Get stroke color from CSS variable or default
+    const computedStyle = getComputedStyle(container);
+    const strokeColor = computedStyle.getPropertyValue("--battery-home-color") || "rgb(150, 150, 150)";
+
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(gridCenterX, gridCenterY);
+    ctx.lineTo(homeCenterX, homeCenterY);
+    ctx.stroke();
   }
 
   private _tryConnectAll() {
