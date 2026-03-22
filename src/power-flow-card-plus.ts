@@ -621,14 +621,20 @@ export class PowerFlowCardPlus extends LitElement {
     const mobileFontSizeSm = Math.round(10 * mobileScale);
     const mobileSidePadding = 10;
 
-    const mobileSolarCx = mobileCenterX;
-    const mobileSolarCy = Math.round(40 * mobileScale);
-    const mobileVerticalStep = Math.round((mobileViewBoxHeight - mobileSolarCy - mobileLabelY - Math.round(20 * mobileScale)) / 3);
-    const mobileGridCx = mobileViewBoxWidth - mobileSidePadding - mobileR;
+    const mobileVerticalTopPadding = Math.round(24 * mobileScale);
+    const mobileVerticalBottomPadding = Math.round(24 * mobileScale);
+    const mobileVerticalLayoutHeight = Math.max(
+      380,
+      Math.min(620, mobileViewportHeight - mobileVerticalTopPadding - mobileVerticalBottomPadding)
+    );
+    const mobileSolarCy = Math.max(70, mobileVerticalTopPadding);
+    const mobileVerticalStep = Math.round((mobileVerticalLayoutHeight - mobileSolarCy - mobileLabelY) / 3);
+    const mobileGridCx = mobileViewBoxWidth - mobileSidePadding - mobileR - 27;
     const mobileGridCy = mobileSolarCy + mobileVerticalStep;
     const mobileHomeCx = mobileSidePadding + mobileR;
     const mobileHomeCy = mobileSolarCy + mobileVerticalStep * 2;
-    const mobileBatteryCx = mobileCenterX;
+    const mobileSolarCx = (mobileHomeCx + mobileGridCx) / 2;
+    const mobileBatteryCx = mobileSolarCx;
     const mobileBatteryCy = mobileSolarCy + mobileVerticalStep * 3;
     const mobileSolarValue = displayValue(this.hass, this._config, solar.state.total || 0, {
       decimals: 1,
