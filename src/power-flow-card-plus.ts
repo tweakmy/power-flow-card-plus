@@ -50,8 +50,10 @@ import {
   getTopLeftIndividual,
   getTopRightIndividual,
 } from "./utils/computeIndividualPosition";
+import { checkShouldShowDots } from "./utils/checkShouldShowDots";
 import { displayValue } from "./utils/displayValue";
 import { defaultValues, getDefaultConfig } from "./utils/get-default-config";
+import { showLine } from "./utils/showLine";
 import { registerCustomCard } from "./utils/register-custom-card";
 import { coerceNumber } from "./utils/utils";
 
@@ -598,26 +600,50 @@ export class PowerFlowCardPlus extends LitElement {
     const individualFieldRightTop = getTopRightIndividual(sortedIndividualObjects);
     const individualFieldRightBottom = getBottomRightIndividual(sortedIndividualObjects);
 
-    // Shared mobile SVG geometry (all relative to group center = 0,0)
-    const mobileR = 30;
-    const mobileIconSize = 20;
-    const mobileIconX = -(mobileIconSize / 2);  // -10
-    const mobileIconY = -18;
-    const mobileValueY = 7;
-    const mobileLabelY = mobileR + 6;  // 36
-
-    const mobileSolarCx = 100;
-    const mobileSolarCy = 40;
-
     const mobileViewportWidth = this._width || 414;
-    const mobileHorizontalSpread = Math.max(35, Math.min(65, Math.round((mobileViewportWidth - 250) * 0.4)));
-    const mobileGridCx = 100 + mobileHorizontalSpread;
-    const mobileGridCy = 120;
-    const mobileHomeCx = 100 - mobileHorizontalSpread;
-    const mobileHomeCy = 200;
-    const mobileBatteryCx = 100;
-    const mobileBatteryCy = 280;
+    const mobileViewportHeight = typeof window !== "undefined" ? window.innerHeight : Math.round(mobileViewportWidth * 1.78);
+    const mobileViewBoxWidth = Math.max(400, mobileViewportWidth);
+    const mobileViewBoxHeight = Math.max(900, mobileViewportHeight);
+    // mobileScale: 1 SVG unit ≈ 1 CSS px — all sizes multiply by this so visuals stay constant
+    const mobileScale = mobileViewBoxWidth / 200;
+    const mobileCenterX = mobileViewBoxWidth / 2;
+
+    // Shared mobile SVG geometry (all relative to group center = 0,0)
+    const mobileR = Math.round(30 * mobileScale);
+    const mobileIconSize = Math.round(20 * mobileScale);
+    const mobileIconX = -(mobileIconSize / 2);
+    const mobileIconY = -Math.round(18 * mobileScale);
+    const mobileValueY = Math.round(7 * mobileScale);
+    const mobileLabelY = mobileR + Math.round(6 * mobileScale);
+    const mobileStrokeWidth = Math.round(2 * mobileScale);
+    const mobileDotRadius = Math.round(2.4 * mobileScale * 10) / 10;
+    const mobileFontSizeLg = Math.round(12 * mobileScale);
+    const mobileFontSizeSm = Math.round(10 * mobileScale);
+    const mobileSidePadding = 10;
+
+    const mobileSolarCx = mobileCenterX;
+    const mobileSolarCy = Math.round(40 * mobileScale);
+    const mobileVerticalStep = Math.round((mobileViewBoxHeight - mobileSolarCy - mobileLabelY - Math.round(20 * mobileScale)) / 3);
+    const mobileGridCx = mobileViewBoxWidth - mobileSidePadding - mobileR;
+    const mobileGridCy = mobileSolarCy + mobileVerticalStep;
+    const mobileHomeCx = mobileSidePadding + mobileR;
+    const mobileHomeCy = mobileSolarCy + mobileVerticalStep * 2;
+    const mobileBatteryCx = mobileCenterX;
+    const mobileBatteryCy = mobileSolarCy + mobileVerticalStep * 3;
+    const mobileSolarValue = displayValue(this.hass, this._config, solar.state.total || 0, {
+      decimals: 1,
+      watt_threshold: this._config.watt_threshold,
+    });
     const mobileSecondaryTextColor = "#9ca3af";
+    const mobileLineOpacity = (power: number): number => {
+      if (power > 0) return 1;
+      const mode = this._config?.display_zero_lines?.mode;
+      if (mode === "transparency" || mode === "custom") {
+        const t = this._config?.display_zero_lines?.transparency ?? 50;
+        return 1 - t / 100;
+      }
+      return 1;
+    };
     const mobileSolarColor = "#ff9800";
     const toHexFromRgbArray = (arr: number[]) =>
       `#${arr
@@ -640,8 +666,8 @@ export class PowerFlowCardPlus extends LitElement {
     const mobileBatteryInTextColor = "#F06292";
     const mobileBatteryOutTextColor = entities.battery?.color_value === false ? "#000" : mobileBatteryOutColor;
     const mobileBatteryCircleColor = mobileBatteryIsCharging ? "#F06292" : mobileBatteryOutTextColor;
-    const mobileBatteryValueFontSize = 9;
-    const mobileBatteryValueLineGap = 11;
+    const mobileBatteryValueFontSize = Math.round(9 * mobileScale);
+    const mobileBatteryValueLineGap = Math.round(11 * mobileScale);
     const mobileShowBatteryIn =
       entities.battery?.display_state === "two_way" ||
       entities.battery?.display_state === undefined ||
@@ -706,8 +732,8 @@ export class PowerFlowCardPlus extends LitElement {
         : mobileGridConsumptionColor;
     const mobileGridReturnTextColor = entities.grid?.color_value === false ? "#000" : mobileGridReturnColor;
     const mobileGridConsumptionTextColor = entities.grid?.color_value === false ? "#000" : mobileGridConsumptionColor;
-    const mobileGridValueFontSize = 9;
-    const mobileGridValueLineGap = 11;
+    const mobileGridValueFontSize = Math.round(9 * mobileScale);
+    const mobileGridValueLineGap = Math.round(11 * mobileScale);
     const mobileShowGridReturn =
       (entities.grid?.display_state === "two_way" ||
         entities.grid?.display_state === undefined ||
@@ -941,11 +967,73 @@ export class PowerFlowCardPlus extends LitElement {
         </div>
         <div class="card-content mobile-layout ${this._config.full_size ? "full-size" : ""}">
           <svg
-            viewBox="0 0 200 800"
+            viewBox="0 0 ${mobileViewBoxWidth} ${mobileViewBoxHeight}"
             xmlns="http://www.w3.org/2000/svg"
-            preserveAspectRatio="xMidYMin meet"
-            style="display:block;width:100%;height:auto;"
+            style="display:block; width:${mobileViewBoxWidth}px; height:${mobileViewBoxHeight}px;"
           >
+            ${solar.has && battery.has && showLine(this._config, solar.state.toBattery || 0)
+              ? svg`
+                  <path
+                    id="mobile-solar-battery-path"
+                    d="M ${mobileSolarCx},${mobileSolarCy + mobileR} L ${mobileBatteryCx},${mobileBatteryCy - mobileR}"
+                    style="fill: none; stroke: ${mobileSolarColor}; stroke-width: ${mobileStrokeWidth}; opacity: ${mobileLineOpacity(solar.state.toBattery || 0)};"
+                  />
+                  ${checkShouldShowDots(this._config) && (solar.state.toBattery || 0) > 0
+                    ? svg`<circle r="${mobileDotRadius}" style="fill: ${mobileSolarColor};">
+                        <animateMotion
+                          dur="${newDur.solarToBattery}s"
+                          repeatCount="indefinite"
+                          calcMode="linear"
+                        >
+                          <mpath href="#mobile-solar-battery-path" />
+                        </animateMotion>
+                      </circle>`
+                    : svg``}
+                `
+              : svg``}
+
+            ${solar.has && grid.hasReturnToGrid && showLine(this._config, solar.state.toGrid || 0)
+              ? svg`
+                  <path
+                    id="mobile-solar-grid-path"
+                    d="M ${mobileSolarCx},${mobileSolarCy + mobileR} L ${mobileSolarCx},${mobileGridCy} L ${mobileGridCx - mobileR},${mobileGridCy}"
+                    style="fill: none; stroke: ${mobileGridReturnColor}; stroke-width: ${mobileStrokeWidth}; opacity: ${mobileLineOpacity(solar.state.toGrid || 0)};"
+                  />
+                  ${checkShouldShowDots(this._config) && (solar.state.toGrid || 0) > 0
+                    ? svg`<circle r="${mobileDotRadius}" style="fill: ${mobileGridReturnColor};">
+                        <animateMotion
+                          dur="${newDur.solarToGrid}s"
+                          repeatCount="indefinite"
+                          calcMode="linear"
+                        >
+                          <mpath href="#mobile-solar-grid-path" />
+                        </animateMotion>
+                      </circle>`
+                    : svg``}
+                `
+              : svg``}
+
+            ${solar.has && !entities.home?.hide && showLine(this._config, solar.state.toHome || 0)
+              ? svg`
+                  <path
+                    id="mobile-solar-home-path"
+                    d="M ${mobileSolarCx},${mobileSolarCy + mobileR} L ${mobileSolarCx},${mobileHomeCy} L ${mobileHomeCx + mobileR},${mobileHomeCy}"
+                    style="fill: none; stroke: ${mobileSolarColor}; stroke-width: ${mobileStrokeWidth}; opacity: ${mobileLineOpacity(solar.state.toHome || 0)};"
+                  />
+                  ${checkShouldShowDots(this._config) && (solar.state.toHome || 0) > 0
+                    ? svg`<circle r="${mobileDotRadius}" style="fill: ${mobileSolarColor};">
+                        <animateMotion
+                          dur="${newDur.solarToHome}s"
+                          repeatCount="indefinite"
+                          calcMode="linear"
+                        >
+                          <mpath href="#mobile-solar-home-path" />
+                        </animateMotion>
+                      </circle>`
+                    : svg``}
+                `
+              : svg``}
+
             ${solar.has
               ? svg`
                   <g class="mobile-solar-group" transform="translate(${mobileSolarCx}, ${mobileSolarCy})">
@@ -958,27 +1046,16 @@ export class PowerFlowCardPlus extends LitElement {
                       text-anchor="middle"
                       dominant-baseline="hanging"
                       style="fill: #000;"
-                      font-size="12"
+                      font-size="${mobileFontSizeLg}"
                     >
-                      ${displayValue(this.hass, this._config, solar.state.total || 0, {
-                        decimals: this._config.w_decimals,
-                        watt_threshold: this._config.watt_threshold,
-                      })}
+                      ${mobileSolarValue}
                     </text>
                     <circle
                       cx="0"
                       cy="0"
                       r="${mobileR}"
-                      style="fill: none; stroke: ${mobileSolarColor}; stroke-width: 2;"
+                        style="fill: none; stroke: ${mobileSolarColor}; stroke-width: ${mobileStrokeWidth};"
                     />
-                    <text
-                      x="0"
-                      y="${mobileLabelY}"
-                      text-anchor="middle"
-                      dominant-baseline="hanging"
-                      style="fill: ${mobileSecondaryTextColor};"
-                      font-size="10"
-                    >${solar.name}</text>
                   </g>
                 `
               : svg``}
@@ -1012,16 +1089,8 @@ export class PowerFlowCardPlus extends LitElement {
                       cx="0"
                       cy="0"
                       r="${mobileR}"
-                      style="fill: none; stroke: ${mobileGridCircleColor}; stroke-width: 2;"
+                      style="fill: none; stroke: ${mobileGridCircleColor}; stroke-width: ${mobileStrokeWidth};"
                     />
-                    <text
-                      x="0"
-                      y="${mobileLabelY}"
-                      text-anchor="middle"
-                      dominant-baseline="hanging"
-                      style="fill: ${mobileSecondaryTextColor};"
-                      font-size="10"
-                    >${grid.name}</text>
                   </g>
                 `
               : svg``}
@@ -1037,7 +1106,7 @@ export class PowerFlowCardPlus extends LitElement {
                     text-anchor="middle"
                     dominant-baseline="hanging"
                     style="fill: #000;"
-                    font-size="12"
+                      font-size="${mobileFontSizeLg}"
                   >
                     ${homeUsageToDisplay}
                   </text>
@@ -1049,7 +1118,7 @@ export class PowerFlowCardPlus extends LitElement {
                         stroke-dasharray="${mobileHomeSolarCircumference} ${mobileCircleCircumference - mobileHomeSolarCircumference}"
                         stroke-dashoffset="-${mobileCircleCircumference - mobileHomeSolarCircumference}"
                         shape-rendering="geometricPrecision"
-                        style="fill: none; stroke: ${mobileSolarColor}; stroke-width: 2;"
+                        style="fill: none; stroke: ${mobileSolarColor}; stroke-width: ${mobileStrokeWidth};"
                       />`
                     : svg``}
                   ${mobileHomeBatteryCircumference > 0
@@ -1060,7 +1129,7 @@ export class PowerFlowCardPlus extends LitElement {
                         stroke-dasharray="${mobileHomeBatteryCircumference} ${mobileCircleCircumference - mobileHomeBatteryCircumference}"
                         stroke-dashoffset="-${mobileCircleCircumference - mobileHomeBatteryCircumference - mobileHomeSolarCircumference}"
                         shape-rendering="geometricPrecision"
-                        style="fill: none; stroke: ${mobileBatteryOutColor}; stroke-width: 2;"
+                        style="fill: none; stroke: ${mobileBatteryOutColor}; stroke-width: ${mobileStrokeWidth};"
                       />`
                     : svg``}
                   ${mobileHomeNonFossilCircumference > 0
@@ -1076,7 +1145,7 @@ export class PowerFlowCardPlus extends LitElement {
                           mobileHomeSolarCircumference
                         }"
                         shape-rendering="geometricPrecision"
-                        style="fill: none; stroke: ${mobileNonFossilColor}; stroke-width: 2;"
+                        style="fill: none; stroke: ${mobileNonFossilColor}; stroke-width: ${mobileStrokeWidth};"
                       />`
                     : svg``}
                   <circle
@@ -1086,7 +1155,7 @@ export class PowerFlowCardPlus extends LitElement {
                     stroke-dasharray="${mobileHomeGridVisibleCircumference} ${mobileHomeGridGapCircumference}"
                     stroke-dashoffset="0"
                     shape-rendering="geometricPrecision"
-                    style="fill: none; stroke: ${mobileGridConsumptionColor}; stroke-width: 2;"
+                    style="fill: none; stroke: ${mobileGridConsumptionColor}; stroke-width: ${mobileStrokeWidth};"
                   />
                   <text
                     x="0"
@@ -1094,7 +1163,7 @@ export class PowerFlowCardPlus extends LitElement {
                     text-anchor="middle"
                     dominant-baseline="hanging"
                     style="fill: ${mobileSecondaryTextColor};"
-                    font-size="10"
+                      font-size="${mobileFontSizeSm}"
                   >${home.name}</text>
                 </g>
               `}
@@ -1128,16 +1197,8 @@ export class PowerFlowCardPlus extends LitElement {
                       cx="0"
                       cy="0"
                       r="${mobileR}"
-                      style="fill: none; stroke: ${mobileBatteryCircleColor}; stroke-width: 2;"
+                      style="fill: none; stroke: ${mobileBatteryCircleColor}; stroke-width: ${mobileStrokeWidth};"
                     />
-                    <text
-                      x="0"
-                      y="${mobileLabelY}"
-                      text-anchor="middle"
-                      dominant-baseline="hanging"
-                      style="fill: ${mobileSecondaryTextColor};"
-                      font-size="10"
-                    >${battery.name}</text>
                   </g>
                 `
               : svg``}
