@@ -11,6 +11,8 @@ import { getMainFlowViewBox } from "@/utils/flowViewBox";
 export const flowSolarToGrid = (config: PowerFlowCardPlusConfig, { battery, grid, individual, solar, newDur }: Flows) => {
   const hasBottomRow = battery.has || checkHasBottomIndividual(individual);
   const viewBox = getMainFlowViewBox(hasBottomRow);
+  const solarZeroGeneration = (solar.state.total || 0) === 0;
+  const solarZeroColor = "#A0A0A0";
 
   return grid.hasReturnToGrid && solar.has && showLine(config, solar.state.toGrid || 0)
     ? html`<div
@@ -25,12 +27,14 @@ export const flowSolarToGrid = (config: PowerFlowCardPlusConfig, { battery, grid
             id="return"
             class="return ${styleLine(solar.state.toGrid || 0, config)}"
             d="M${battery.has ? 45 : 47},0 v15 c0,${battery.has ? "30 -10,30 -30,30" : "35 -10,35 -30,35"} h-20"
+            style=${solarZeroGeneration ? `stroke: ${solarZeroColor};` : ""}
             vector-effect="non-scaling-stroke"
           ></path>
           ${checkShouldShowDots(config) && solar.state.toGrid && solar.has
             ? svg`<circle
                 r="1"
                 class="return"
+                style=${solarZeroGeneration ? `fill: ${solarZeroColor}; stroke: ${solarZeroColor};` : ""}
                 vector-effect="non-scaling-stroke"
               >
                 <animateMotion

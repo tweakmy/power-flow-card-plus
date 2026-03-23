@@ -78,19 +78,33 @@ export const allDynamicStyles = (
   }
 
   // Solar
-  main.style.setProperty("--text-solar-color", entities.solar?.color_value ? "var(--energy-solar-color)" : "var(--primary-text-color)");
+  const solarZeroGeneration = (solar.state.total ?? 0) === 0;
+  const solarZeroColor = "#A0A0A0";
+  main.style.setProperty(
+    "--text-solar-color",
+    solarZeroGeneration ? solarZeroColor : entities.solar?.color_value ? "var(--energy-solar-color)" : "var(--primary-text-color)"
+  );
 
   main.style.setProperty(
     "--secondary-text-solar-color",
-    entities.solar?.secondary_info?.color_value ? "var(--energy-solar-color)" : "var(--primary-text-color)"
+    solarZeroGeneration
+      ? solarZeroColor
+      : entities.solar?.secondary_info?.color_value
+      ? "var(--energy-solar-color)"
+      : "var(--primary-text-color)"
   );
 
   if (entities.solar?.color !== undefined) {
     let solarColor = entities.solar?.color;
     if (typeof solarColor === "object") solarColor = convertColorListToHex(solarColor);
-    main.style.setProperty("--energy-solar-color", solarColor || "#ff9800");
+    main.style.setProperty("--energy-solar-color", solarZeroGeneration ? solarZeroColor : solarColor || "#ff9800");
+  } else if (solarZeroGeneration) {
+    main.style.setProperty("--energy-solar-color", solarZeroColor);
   }
-  main.style.setProperty("--icon-solar-color", entities.solar?.color_icon ? "var(--energy-solar-color)" : "var(--primary-text-color)");
+  main.style.setProperty(
+    "--icon-solar-color",
+    solarZeroGeneration ? solarZeroColor : entities.solar?.color_icon ? "var(--energy-solar-color)" : "var(--primary-text-color)"
+  );
 
   // Battery
   if (battery.color.fromBattery !== undefined) {

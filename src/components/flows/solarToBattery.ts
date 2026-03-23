@@ -13,6 +13,8 @@ type FlowSolarToBatteryFlows = Pick<Flows, Exclude<keyof Flows, "grid">>;
 export const flowSolarToBattery = (config: PowerFlowCardPlusConfig, { battery, individual, solar, newDur }: FlowSolarToBatteryFlows) => {
   const hasBottomRow = battery.has || checkHasBottomIndividual(individual);
   const viewBox = getMainFlowViewBox(hasBottomRow);
+  const solarZeroGeneration = (solar.state.total || 0) === 0;
+  const solarZeroColor = "#A0A0A0";
 
   return battery.has && solar.has && showLine(config, solar.state.toBattery || 0)
     ? html`<div
@@ -27,12 +29,14 @@ export const flowSolarToBattery = (config: PowerFlowCardPlusConfig, { battery, i
             id="battery-solar"
             class="battery-solar ${styleLine(solar.state.toBattery || 0, config)}"
             d="M50,0 V100"
+            style=${solarZeroGeneration ? `stroke: ${solarZeroColor};` : ""}
             vector-effect="non-scaling-stroke"
           ></path>
           ${checkShouldShowDots(config) && solar.state.toBattery
             ? svg`<circle
                 r="1"
                 class="battery-solar"
+                style=${solarZeroGeneration ? `fill: ${solarZeroColor}; stroke: ${solarZeroColor};` : ""}
                 vector-effect="non-scaling-stroke"
               >
                 <animateMotion

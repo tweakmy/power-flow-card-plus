@@ -684,7 +684,9 @@ export class PowerFlowCardPlus extends LitElement {
       }
       return 1;
     };
-    const mobileSolarColor = "#ff9800";
+    const mobileSolarZeroColor = "#A0A0A0";
+    const mobileSolarIsZeroGeneration = (solar.state.total || 0) === 0;
+    const mobileSolarColor = mobileSolarIsZeroGeneration ? mobileSolarZeroColor : "#ff9800";
     const toHexFromRgbArray = (arr: number[]) =>
       `#${arr
         .slice(0, 3)
@@ -701,10 +703,10 @@ export class PowerFlowCardPlus extends LitElement {
     const mobileBatteryOutColor = normalizeMobileColor(battery.color.fromBattery, "#4db6ac");
     const mobileNonFossilColor = "#0f9d58";
 
-    const mobileBatteryIsCharging = (battery.state.toBattery || 0) > (battery.state.fromBattery || 0);
-    const mobileBatteryColor = mobileBatteryIsCharging ? mobileBatteryInColor : mobileBatteryOutColor;
+    const mobileBatteryIsCharging = (battery.state.toBattery || 0) > 0;
     const mobileBatteryInTextColor = mobileResolveTextColor("#F06292", mobileBatteryInColor);
     const mobileBatteryOutTextColor = mobileResolveTextColor(entities.battery?.color_value === false ? "#000" : mobileBatteryOutColor, mobileBatteryOutColor);
+    const mobileBatteryColor = mobileBatteryIsCharging ? mobileBatteryInTextColor : mobileBatteryOutColor;
     const mobileBatteryCircleColor = mobileBatteryIsCharging ? "#F06292" : mobileBatteryOutTextColor;
     const mobileBatteryValueFontSize = Math.round(9 * mobileScale);
     const mobileBatteryValueLineGap = Math.round(11 * mobileScale);
@@ -788,14 +790,10 @@ export class PowerFlowCardPlus extends LitElement {
       : entities.battery?.entity?.production;
 
     const mobileGridCircleColor =
-      entities.grid?.color_circle === "consumption"
-        ? mobileGridConsumptionColor
-        : entities.grid?.color_circle === "production"
+      (grid.state.toGrid ?? 0) > 0
         ? mobileGridReturnColor
-        : entities.grid?.color_circle === true
-        ? (grid.state.fromGrid ?? 0) >= (grid.state.toGrid ?? 0)
-          ? mobileGridConsumptionColor
-          : mobileGridReturnColor
+        : (grid.state.fromGrid ?? 0) > 0
+        ? mobileGridConsumptionColor
         : mobileGridConsumptionColor;
     const mobileGridIconColor = mobileGridCircleColor;
     const mobileGridReturnTextColor = mobileResolveTextColor(entities.grid?.color_value === false ? "#000" : mobileGridReturnColor, mobileGridCircleColor);
@@ -857,6 +855,10 @@ export class PowerFlowCardPlus extends LitElement {
     const mobileGridExportTextX = -64;
     const mobileGridDesiredExportY = -mobileR - Math.round(16 * mobileScale);
     const mobileGridCurrentExportY = mobileR + Math.round(8 * mobileScale);
+    const mobileGridToBatteryPower = Math.max(grid.state.toBattery || 0, 0);
+    const mobileBatteryToGridPower = Math.max(battery.state.toGrid || 0, 0);
+    const mobileBatteryGridPathColor =
+      mobileGridToBatteryPower >= mobileBatteryToGridPower ? mobileGridConsumptionColor : mobileGridReturnColor;
 
     const mobileHomeSourceColors: HomeSources = {
       battery: {
@@ -1165,10 +1167,10 @@ export class PowerFlowCardPlus extends LitElement {
                   <path
                     id="mobile-solar-grid-path"
                     d="M ${mobileSolarCx},${mobileSolarCy + mobileR} L ${mobileSolarCx},${mobileGridCy} L ${mobileGridEdgeTowardSolarX},${mobileGridCy}"
-                    style="fill: none; stroke: ${mobileGridReturnColor}; stroke-width: ${mobileStrokeWidth}; opacity: ${mobileLineOpacity(solar.state.toGrid || 0)};"
+                    style="fill: none; stroke: ${mobileSolarIsZeroGeneration ? mobileSolarZeroColor : mobileGridReturnColor}; stroke-width: ${mobileStrokeWidth}; opacity: ${mobileLineOpacity(solar.state.toGrid || 0)};"
                   />
                   ${checkShouldShowDots(this._config) && (solar.state.toGrid || 0) > 0
-                    ? svg`<circle r="${mobileDotRadius}" style="fill: ${mobileGridReturnColor};">
+                    ? svg`<circle r="${mobileDotRadius}" style="fill: ${mobileSolarIsZeroGeneration ? mobileSolarZeroColor : mobileGridReturnColor};">
                         <animateMotion
                           dur="${newDur.solarToGrid}s"
                           repeatCount="indefinite"
@@ -1223,7 +1225,7 @@ export class PowerFlowCardPlus extends LitElement {
                 `
               : svg``}
 
-            ${battery.has && !entities.home?.hide && showLine(this._config, battery.state.toHome || 0)
+            ${battery.has && !entities.home?.hide && (battery.state.toHome || 0) > 0
               ? svg`
                   <path
                     id="mobile-battery-home-path"
@@ -1249,7 +1251,7 @@ export class PowerFlowCardPlus extends LitElement {
                   <path
                     id="mobile-battery-grid-path"
                     d="M ${mobileBatteryCx},${mobileBatteryCy - mobileR} L ${mobileBatteryCx},${mobileGridCy} L ${mobileGridEdgeTowardBatteryX},${mobileGridCy}"
-                    style="fill: none; stroke: ${(grid.state.toBattery || 0) > 0 ? mobileGridConsumptionColor : mobileGridReturnColor}; stroke-width: ${mobileStrokeWidth}; opacity: ${mobileLineOpacity(Math.max(grid.state.toBattery || 0, battery.state.toGrid || 0))};"
+                    style="fill: none; stroke: ${mobileBatteryGridPathColor}; stroke-width: ${mobileStrokeWidth}; opacity: ${mobileLineOpacity(Math.max(grid.state.toBattery || 0, battery.state.toGrid || 0))};"
                   />
                   ${checkShouldShowDots(this._config) && (grid.state.toBattery || 0) > 0
                     ? svg`<circle r="${mobileDotRadius}" style="fill: ${mobileGridConsumptionColor};">
