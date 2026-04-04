@@ -615,12 +615,15 @@ export class PowerFlowCardPlus extends LitElement {
     const individualFieldRightTop = getTopRightIndividual(sortedIndividualObjects);
     const individualFieldRightBottom = getBottomRightIndividual(sortedIndividualObjects);
 
-    const mobileViewportWidth = this._width || 414;
-    const mobileViewportHeight = typeof window !== "undefined" ? window.innerHeight : Math.round(mobileViewportWidth * 1.78);
-    const mobileViewBoxWidth = Math.max(400, mobileViewportWidth);
-    const mobileViewBoxHeight = Math.max(900, mobileViewportHeight);
+    const isDesktopWideLayout = typeof window !== "undefined" ? window.innerWidth >= 1025 : this._width > 414;
+    const mobileViewportWidth = isDesktopWideLayout
+      ? Math.max(414, Math.min(this._width || 980, 980))
+      : Math.max(400, Math.min(this._width || 414, 414));
+    const mobileViewportHeight = 900;
+    const mobileViewBoxWidth = mobileViewportWidth;
+    const mobileViewBoxHeight = mobileViewportHeight;
     // mobileScale: 1 SVG unit ≈ 1 CSS px — all sizes multiply by this so visuals stay constant
-    const mobileScale = mobileViewBoxWidth / 200;
+    const mobileScale = isDesktopWideLayout ? 414 / 200 : mobileViewBoxWidth / 200;
     const mobileCenterX = mobileViewBoxWidth / 2;
 
     // Shared mobile SVG geometry (all relative to group center = 0,0)
@@ -644,10 +647,21 @@ export class PowerFlowCardPlus extends LitElement {
     );
     const mobileSolarCy = Math.max(70, mobileVerticalTopPadding);
     const mobileVerticalStep = Math.round((mobileVerticalLayoutHeight - mobileSolarCy - mobileLabelY) / 3);
-    const mobileGridCx = mobileSidePadding + mobileR;
-    const mobileGridCy = mobileSolarCy + mobileVerticalStep;
-    const mobileHomeCx = mobileViewBoxWidth - mobileSidePadding - mobileR - 27;
-    const mobileHomeCy = mobileSolarCy + mobileVerticalStep * 2;
+    const mobileGridBaseCx = mobileSidePadding + mobileR;
+    let mobileGridCy = mobileSolarCy + mobileVerticalStep;
+    const mobileHomeBaseCx = mobileViewBoxWidth - mobileSidePadding - mobileR - 27;
+    const mobileHomeDesktopCx = mobileViewBoxWidth - mobileSidePadding - mobileR;
+    let mobileGridCx = mobileGridBaseCx;
+    let mobileHomeCx = mobileHomeBaseCx;
+    let mobileHomeCy = mobileSolarCy + mobileVerticalStep * 2;
+
+    if (isDesktopWideLayout) {
+      mobileGridCx = mobileGridBaseCx;
+      mobileHomeCx = mobileHomeDesktopCx;
+      const mobileDesktopMidCy = mobileSolarCy + Math.round(mobileVerticalStep * 1.5);
+      mobileGridCy = mobileDesktopMidCy;
+      mobileHomeCy = mobileDesktopMidCy;
+    }
     const mobileSolarCx = (mobileHomeCx + mobileGridCx) / 2;
     const mobileBatteryCx = mobileSolarCx;
     const mobileBatteryCy = mobileSolarCy + mobileVerticalStep * 3;
@@ -1034,112 +1048,14 @@ export class PowerFlowCardPlus extends LitElement {
         style=${this._config.style_ha_card ? this._config.style_ha_card : ""}
       >
         <div
-          class="card-content desktop-layout ${this._config.full_size ? "full-size" : ""}"
+          class="card-content mobile-layout ${this._config.full_size ? "full-size" : ""}"
           id="power-flow-card-plus"
           style=${this._config.style_card_content ? this._config.style_card_content : ""}
         >
-          ${solar.has || individualObjs?.some((individual) => individual?.has) || nonFossil.hasPercentage
-            ? html`<div class="row">
-                ${nonFossilElement(this, this._config, {
-                  entities,
-                  grid,
-                  newDur,
-                  nonFossil,
-                  templatesObj,
-                })}
-                ${solar.has
-                  ? solarElement(this, this._config, {
-                      entities,
-                      solar,
-                      templatesObj,
-                    })
-                  : individualObjs?.some((individual) => individual?.has)
-                  ? html`<div class="spacer"></div>`
-                  : ""}
-                ${individualFieldLeftTop
-                  ? individualLeftTopElement(this, this._config, {
-                      individualObj: individualFieldLeftTop,
-                      displayState: getIndividualDisplayState(individualFieldLeftTop),
-                      newDur,
-                      templatesObj,
-                    })
-                  : html`<div class="spacer"></div>`}
-                ${checkHasRightIndividual(individualObjs)
-                  ? individualRightTopElement(this, this._config, {
-                      displayState: getIndividualDisplayState(individualFieldRightTop),
-                      individualObj: individualFieldRightTop,
-                      newDur,
-                      templatesObj,
-                      battery,
-                      individualObjs,
-                    })
-                  : html``}
-              </div>`
-            : html``}
-          <div class="row">
-            ${grid.has
-              ? gridElement(this, this._config, {
-                  entities,
-                  grid,
-                  templatesObj,
-                })
-              : html`<div class="spacer"></div>`}
-            <div class="spacer"></div>
-            ${!entities.home?.hide
-              ? homeElement(this, this._config, {
-                  circleCircumference,
-                  entities,
-                  grid,
-                  home,
-                  homeBatteryCircumference,
-                  homeGridCircumference,
-                  homeNonFossilCircumference,
-                  homeSolarCircumference,
-                  newDur,
-                  templatesObj,
-                  homeUsageToDisplay,
-                  individual: individualObjs,
-                })
-              : html`<div class="spacer"></div>`}
-            ${checkHasRightIndividual(individualObjs) ? html` <div class="spacer"></div>` : html``}
-          </div>
-          ${battery.has || checkHasBottomIndividual(individualObjs)
-            ? html`<div class="row">
-                <div class="spacer"></div>
-                ${battery.has ? batteryElement(this, this._config, { battery, entities }) : html`<div class="spacer"></div>`}
-                ${individualFieldLeftBottom
-                  ? individualLeftBottomElement(this, this._config, {
-                      displayState: getIndividualDisplayState(individualFieldLeftBottom),
-                      individualObj: individualFieldLeftBottom,
-                      newDur,
-                      templatesObj,
-                    })
-                  : html`<div class="spacer"></div>`}
-                ${checkHasRightIndividual(individualObjs)
-                  ? individualRightBottomElement(this, this._config, {
-                      displayState: getIndividualDisplayState(individualFieldRightBottom),
-                      individualObj: individualFieldRightBottom,
-                      newDur,
-                      templatesObj,
-                      battery,
-                      individualObjs,
-                    })
-                  : html``}
-              </div>`
-            : html`<div class="spacer"></div>`}
-          ${flowElement(this._config, {
-            battery,
-            grid,
-            individual: individualObjs,
-            newDur,
-            solar,
-          })}
-        </div>
-        <div class="card-content mobile-layout ${this._config.full_size ? "full-size" : ""}">
           <svg
             viewBox="0 0 ${mobileViewBoxWidth} ${mobileViewBoxHeight}"
             xmlns="http://www.w3.org/2000/svg"
-            style="display:block; width:${mobileViewBoxWidth}px; height:${mobileViewBoxHeight}px;"
+            style="display:block; width:100%; max-width:${mobileViewBoxWidth}px; height:auto; margin:0 auto;"
           >
             ${solar.has && battery.has && showLine(this._config, solar.state.toBattery || 0)
               ? svg`

@@ -3,6 +3,7 @@ import { PowerFlowCardPlus } from "../power-flow-card-plus";
 import { ConfigEntities, PowerFlowCardPlusConfig } from "../power-flow-card-plus-config";
 import { displayValue } from "../utils/displayValue";
 import { offlineStr } from "../type";
+import { renderEntitySvgIcon } from "./svgIcon";
 
 export const batteryElement = (
   main: PowerFlowCardPlus,
@@ -66,18 +67,7 @@ export const batteryElement = (
           </span>`
         : null}
       ${battery.icon !== " "
-        ? html` <ha-icon
-            id="battery-icon"
-            .icon=${battery.icon}
-            @click=${(e: { stopPropagation: () => void; target: HTMLElement }) => {
-              main.openDetails(e, entities.battery?.tap_action, entities.battery?.state_of_charge!);
-            }}
-            @keyDown=${(e: { key: string; stopPropagation: () => void; target: HTMLElement }) => {
-              if (e.key === "Enter") {
-                main.openDetails(e, entities.battery?.tap_action, entities.battery?.state_of_charge!);
-              }
-            }}
-          />`
+        ? html`${renderEntitySvgIcon(battery.icon, "battery-icon")}`
         : null}
       ${entities.battery?.display_state === "two_way" ||
       entities.battery?.display_state === undefined ||

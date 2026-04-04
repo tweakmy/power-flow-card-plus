@@ -4,6 +4,7 @@ import { ConfigEntities, PowerFlowCardPlusConfig } from "../power-flow-card-plus
 import { generalSecondarySpan } from "./spans/generalSecondarySpan";
 import { displayValue } from "../utils/displayValue";
 import { TemplatesObj } from "../type";
+import { renderEntitySvgIcon } from "./svgIcon";
 
 export const solarElement = (
   main: PowerFlowCardPlus,
@@ -32,7 +33,7 @@ export const solarElement = (
       }}
     >
       ${generalSecondarySpan(main.hass, main, config, templatesObj, solar, "solar")}
-      ${solar.icon !== " " ? html` <ha-icon id="solar-icon" .icon=${solar.icon} />` : null}
+      ${renderEntitySvgIcon(solar.icon, "solar-icon")}
       ${entities.solar?.display_zero_state !== false || (solar.state.total || 0) > 0
         ? html` <span class="solar">
             ${displayValue(main.hass, config, solar.state.total, {

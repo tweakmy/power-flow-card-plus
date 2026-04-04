@@ -4,6 +4,7 @@ import { displayValue } from "../utils/displayValue";
 import { generalSecondarySpan } from "./spans/generalSecondarySpan";
 import { offlineStr, TemplatesObj } from "../type";
 import { ConfigEntities, PowerFlowCardPlusConfig } from "../power-flow-card-plus-config";
+import { renderEntitySvgIcon } from "./svgIcon";
 
 export interface GridExportLimits {
   desired?: { label: string; value: string; unit: string };
@@ -100,7 +101,7 @@ export const gridElement = (
       }}
     >
       ${generalSecondarySpan(main.hass, main, config, templatesObj, grid, "grid")}
-      ${grid.icon !== " " ? html` <ha-icon id="grid-icon" .icon=${grid.icon} />` : null}
+      ${renderEntitySvgIcon(grid.icon, "grid-icon")}
       ${(entities.grid?.display_state === "two_way" ||
         entities.grid?.display_state === undefined ||
         (entities.grid?.display_state === "one_way_no_zero" && (grid.state.toGrid ?? 0) > 0) ||

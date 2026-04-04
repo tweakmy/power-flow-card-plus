@@ -102,7 +102,7 @@ export const styles = css`
     // background-color: var(--card-background-color); /* hide overflowing lines behind background */
   }
 
-  .card-content,
+  .card-content.desktop-layout,
   .row {
     max-width: 470px;
   }
@@ -235,7 +235,7 @@ export const styles = css`
   path.grey {
     stroke: var(--greyed-out--line-color) !important;
   }
-  .circle svg {
+  .circle > svg.home-circle-sections {
     position: absolute;
     fill: none;
     stroke-width: 4px;
@@ -243,6 +243,11 @@ export const styles = css`
     height: 100%;
     top: 0;
     left: 0;
+  }
+
+  .circle > :not(svg.home-circle-sections) {
+    position: relative;
+    z-index: 1;
   }
 
   span.secondary-info {
@@ -273,8 +278,55 @@ export const styles = css`
     color: var(--icon-individual-right-top-color);
   }
 
+  .entity-svg-icon {
+    width: 24px;
+    height: 24px;
+    display: block;
+    flex: 0 0 auto;
+    overflow: visible;
+    margin: 1px 0 3px;
+  }
+
+  .entity-svg-icon path {
+    stroke: none;
+  }
+
+  .circle > span:not(.secondary-info) {
+    line-height: 1.15;
+  }
+
+  .circle > span.secondary-info {
+    line-height: 1.1;
+    margin-bottom: 1px;
+  }
+
   #solar-icon {
     color: var(--icon-solar-color);
+  }
+
+  #solar-icon path {
+    fill: var(--icon-solar-color);
+  }
+
+  #grid-icon path {
+    fill: var(--icon-grid-color);
+  }
+
+  #battery-icon path {
+    fill: var(--icon-battery-color);
+  }
+
+  #battery-icon {
+    margin-bottom: 1px;
+  }
+
+  #home-icon path {
+    fill: var(--icon-home-color);
+  }
+
+  #home-icon {
+    margin-top: 2px;
+    margin-bottom: 4px;
   }
   circle.individual-top {
     stroke-width: 4;
@@ -370,7 +422,8 @@ export const styles = css`
   .solar .circle {
     border-color: var(--energy-solar-color);
   }
-  .solar ha-icon:not(.small) {
+  .solar ha-icon:not(.small),
+  .solar .entity-svg-icon {
     color: var(--icon-solar-color);
   }
   circle.solar,
@@ -422,7 +475,8 @@ export const styles = css`
   path.battery-to-grid {
     stroke: var(--battery-grid-line);
   }
-  .battery ha-icon:not(.small) {
+  .battery ha-icon:not(.small),
+  .battery .entity-svg-icon {
     color: var(--icon-battery-color);
   }
 
@@ -461,7 +515,8 @@ export const styles = css`
     stroke-width: 4;
     fill: var(--energy-grid-consumption-color);
   }
-  .grid ha-icon:not(.small) {
+  .grid ha-icon:not(.small),
+  .grid .entity-svg-icon {
     color: var(--icon-grid-color);
   }
   .home .circle {
@@ -471,10 +526,11 @@ export const styles = css`
   .home .circle.border {
     border-width: 2px;
   }
-  .home ha-icon:not(.small) {
+  .home ha-icon:not(.small),
+  .home .entity-svg-icon {
     color: var(--icon-home-color);
   }
-  .circle svg circle {
+  .circle > svg.home-circle-sections circle {
     animation: var(--home-circle-animation);
     transition: stroke-dashoffset 0.4s, stroke-dasharray 0.4s;
     fill: none;
@@ -552,6 +608,9 @@ export const styles = css`
 
   #battery-state-of-charge-text {
     color: var(--text-battery-state-of-charge-color);
+    display: block;
+    line-height: 1;
+    margin-bottom: 1px;
   }
 
   @keyframes rotate-in {
@@ -573,6 +632,30 @@ export const styles = css`
 
   .home-circle-sections {
     pointer-events: none;
+  }
+
+  .card-content.desktop-layout {
+    display: none;
+  }
+
+  .card-content.mobile-layout {
+    display: block;
+    position: relative;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 414px;
+    box-sizing: border-box;
+    overflow-x: clip;
+  }
+
+  @media (min-width: 1025px) {
+    .card-content.mobile-layout {
+      max-width: 980px;
+    }
+  }
+
+  .card-content.mobile-layout.full-size {
+    transform: none;
   }
   
   .circle-container.battery .battery-op-info {
@@ -646,24 +729,6 @@ export const styles = css`
 
   /* Mobile Layout */
   @media (max-width: 1024px) {
-    .card-content.desktop-layout {
-      display: none;
-    }
-
-    .card-content.mobile-layout {
-      display: block;
-      position: relative;
-      margin: 0 auto;
-      width: min(100%, 100vw);
-      max-width: 100vw;
-      box-sizing: border-box;
-      overflow-x: clip;
-    }
-
-    .card-content.mobile-layout.full-size {
-      transform: none;
-    }
-
     .mobile-container {
       display: flex;
       flex-direction: column;
@@ -833,9 +898,4 @@ export const styles = css`
     }
   }
 
-  @media (min-width: 1025px) {
-    .card-content.mobile-layout {
-      display: none;
-    }
-  }
 `;

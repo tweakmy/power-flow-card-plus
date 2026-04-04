@@ -5,6 +5,7 @@ import { NewDur, TemplatesObj } from "../type";
 import { ConfigEntities, PowerFlowCardPlusConfig } from "../power-flow-card-plus-config";
 import { showLine } from "../utils/showLine";
 import { IndividualObject } from "../states/raw/individual/getIndividualObject";
+import { renderEntitySvgIcon } from "./svgIcon";
 
 interface Home {
   home: any;
@@ -67,7 +68,7 @@ export const homeElement = (
     }}
   >
     ${generalSecondarySpan(main.hass, main, config, templatesObj, home, "home")}
-    ${home.icon !== " " ? html`<ha-icon id="home-icon" .icon=${home.icon} />` : null}
+    ${renderEntitySvgIcon(home.icon, "home-icon")}
     ${homeUsageToDisplay}
     <svg class="home-circle-sections" viewBox="0 0 80 80" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
       ${
