@@ -963,6 +963,24 @@ export class PowerFlowCardPlus extends LitElement {
         : mobileCircleCircumference - mobileHomeSolarCircumference - mobileHomeBatteryCircumference;
     const mobileHomeGridGapCircumference = mobileCircleCircumference - mobileHomeGridVisibleCircumference;
 
+    const mobileHomePhasePower = entities.home?.phase_power;
+    const hasMobileHomePhasePower = !!(mobileHomePhasePower?.red || mobileHomePhasePower?.yellow || mobileHomePhasePower?.blue);
+    const mobileHomePhaseFormatter = new Intl.NumberFormat(this.hass.locale.language, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    const mobileFormatHomePhaseKw = (entity?: string) => mobileHomePhaseFormatter.format(getEntityStateWatts(this.hass, entity) / 1000);
+    const mobileHomePhaseRedKw = mobileFormatHomePhaseKw(mobileHomePhasePower?.red);
+    const mobileHomePhaseYellowKw = mobileFormatHomePhaseKw(mobileHomePhasePower?.yellow);
+    const mobileHomePhaseBlueKw = mobileFormatHomePhaseKw(mobileHomePhasePower?.blue);
+    const mobileHomePhaseFontSize = Math.max(Math.round(7 * mobileScale), 10);
+    const mobileHomePhaseY = mobileR + 8;
+    const mobileHomePhaseColumnGap = 33;
+    const mobileHomePhaseRedX = -mobileR + Math.round(8 * mobileScale);
+    const mobileHomePhaseYellowX = mobileHomePhaseRedX + mobileHomePhaseColumnGap;
+    const mobileHomePhaseBlueX = mobileHomePhaseYellowX + mobileHomePhaseColumnGap;
+    const mobileHomePhaseUnitX = mobileHomePhaseBlueX + mobileHomePhaseColumnGap;
+
     const mobileDotsEnabled = checkShouldShowDots(this._config);
     const mobileSolarBatteryPathD = `M ${mobileSolarCx},${mobileSolarCy + mobileR} L ${mobileBatteryCx},${mobileBatteryCy - mobileR}`;
     const mobileSolarGridPathD = `M ${mobileSolarCx},${mobileSolarCy + mobileR} L ${mobileSolarCx},${mobileGridCy} L ${mobileGridEdgeTowardSolarX},${mobileGridCy}`;
@@ -1336,6 +1354,42 @@ export class PowerFlowCardPlus extends LitElement {
                   >
                     ${homeUsageToDisplay}
                   </text>
+                  ${hasMobileHomePhasePower
+                    ? svg`
+                        <text
+                          x="${mobileHomePhaseRedX}"
+                          y="${mobileHomePhaseY}"
+                          text-anchor="start"
+                          dominant-baseline="hanging"
+                          style="fill: #ef4444;"
+                          font-size="${mobileHomePhaseFontSize}"
+                        >${mobileHomePhaseRedKw}|</text>
+                        <text
+                          x="${mobileHomePhaseYellowX}"
+                          y="${mobileHomePhaseY}"
+                          text-anchor="start"
+                          dominant-baseline="hanging"
+                          style="fill: #eab308;"
+                          font-size="${mobileHomePhaseFontSize}"
+                        >${mobileHomePhaseYellowKw}|</text>
+                        <text
+                          x="${mobileHomePhaseBlueX}"
+                          y="${mobileHomePhaseY}"
+                          text-anchor="start"
+                          dominant-baseline="hanging"
+                          style="fill: #3b82f6;"
+                          font-size="${mobileHomePhaseFontSize}"
+                        >${mobileHomePhaseBlueKw}|</text>
+                        <text
+                          x="${mobileHomePhaseUnitX}"
+                          y="${mobileHomePhaseY}"
+                          text-anchor="start"
+                          dominant-baseline="hanging"
+                          style="fill: ${mobileSecondaryTextColor};"
+                          font-size="${mobileHomePhaseFontSize}"
+                        >kW</text>
+                      `
+                    : svg``}
                   ${mobileHomeSolarCircumference > 0
                     ? svg`<circle
                         cx="0"

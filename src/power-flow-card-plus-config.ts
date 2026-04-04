@@ -83,6 +83,11 @@ interface Solar extends BaseConfigEntity {
 
 interface Home extends BaseConfigEntity {
   entity: string;
+  phase_power?: {
+    red?: string;
+    yellow?: string;
+    blue?: string;
+  };
   override_state?: boolean;
   color_icon?: boolean | "solar" | "grid" | "battery";
   color_value?: boolean | "solar" | "grid" | "battery";

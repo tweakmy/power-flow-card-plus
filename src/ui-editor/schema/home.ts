@@ -63,6 +63,21 @@ const mainSchema = {
       label: "Hide Home",
       selector: { boolean: {} },
     },
+    {
+      name: "phase_power.red",
+      label: "Phase Power Red",
+      selector: { entity: {} },
+    },
+    {
+      name: "phase_power.yellow",
+      label: "Phase Power Yellow",
+      selector: { entity: {} },
+    },
+    {
+      name: "phase_power.blue",
+      label: "Phase Power Blue",
+      selector: { entity: {} },
+    },
   ],
 };
 
