@@ -156,6 +156,8 @@ At least one of _grid_, _battery_, or _solar_ is required. All entites (except _
 | color_value            | `boolean`                                   | Default is `true`. If set to `false`, the values of power will not be colored according to input and output. |                                                                                                                                                                                                                                                                                                                                                                                               |
 | invert_state           | `boolean`                                   | `false`                                                                                                      | If set to true the direction as well as the values will be inverted, meaning a positive value will be shown as production and a negative value will be shown as consumption.                                                                                                                                                                                                                  |
 
+If you want extra grid-related details such as export limits, add them through your configured `tap_action` / `tap_mod` instead of inline labels next to the grid symbol.
+
 #### Solar Configuration
 
 | Name               | Type      | Default              | Description                                                                                                                                                        |
@@ -220,9 +222,24 @@ The Individual fields must be an array of objects. Each object must follow the f
 | icon                | `string`                                    | `mdi:home`           | Icon path for the icon inside the Home Circle.                                                                                                                                                                                                                                                              |
 | color_icon          | `boolean` or "solar" or "grid" or "battery" | `false`              | If set to `true`, icon color will match the highest value. If set to `solar`, icon color will match the color of solar. If set to `grid`, icon color will match the color of the grid consumption. If set to `battery`, icon color will match the color of the battery consumption.                         |
 | color_value         | `boolean` or "solar" or "grid" or "battery" | `false`              | If set to `true`, state text color will match the highest value. If set to `solar`, state text color will match the color of solar. If set to `grid`, state text color will match the color of the grid consumption. If set to `battery`, state text color will match the color of the battery consumption. |
+| charger             | `object`                                    | `undefined`          | Optional EV/charger block shown above the Home circle. Shows a charger icon and its power value (for example in `kW`) and draws a connector line to Home. See [Home Charger Object](#home-charger-object).                                                                                                 |
 | secondary_info      | `object`                                    | `undefined`          | Check [Secondary Info Object](#secondary-info-configuration)                                                                                                                                                                                                                                                |
 | subtract_individual | `boolean`                                   | false                | If set to `true`, the home consumption will be calculated by subtracting the sum of the individual devices from the home consumption.                                                                                                                                                                       |
 | override_state      | `boolean`                                   | `false`              | If set to `true`, the home consumption will be the state of the entity provided. By default the home consumption is caluclated by adding up all sources. This is useful, when for example you are using an inverter and it has power losses.                                                                |
+
+#### Home Charger Object
+
+| Name                | Type      | Default            | Description                                                                                                  |
+| ------------------- | --------- | ------------------ | ------------------------------------------------------------------------------------------------------------ |
+| entity              | `string`  | `undefined`        | Entity ID for charger power.                                                                                |
+| icon                | `string`  | `mdi:car-electric` | Icon displayed in the charger bubble above Home.                                                            |
+| status_entity       | `string`  | `undefined`        | Optional entity (for example a switch/binary sensor) used to detect if charging is active.                 |
+| state_charging      | `string`  | `on`               | State value from `status_entity` that means "charging". When not charging, the Home→Charger wire is hidden. |
+| invert_status       | `boolean` | `false`            | If set to `true`, inverts the charging detection from `status_entity` (useful when your source logic is reversed). |
+| unit_of_measurement | `string`  | `kW`               | Unit shown for the charger value.                                                                           |
+| unit_white_space    | `boolean` | `true`             | If set to `false`, no whitespace is added between value and unit.                                           |
+| decimals            | `number`  | card `kw_decimals` | Number of decimals for the charger value.                                                                   |
+| tap_action          | `object`  | `undefined`        | Optional tap action for the charger icon only. The charger power value still opens the default more-info/history for the charger `entity`. |
 
 #### Fossil Fuel Configuration
 

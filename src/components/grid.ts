@@ -2,106 +2,54 @@ import { html } from "lit";
 import { PowerFlowCardPlus } from "../power-flow-card-plus";
 import { displayValue } from "../utils/displayValue";
 import { generalSecondarySpan } from "./spans/generalSecondarySpan";
-import { offlineStr, TemplatesObj } from "../type";
+import { TemplatesObj } from "../type";
 import { ConfigEntities, PowerFlowCardPlusConfig } from "../power-flow-card-plus-config";
 import { renderEntitySvgIcon } from "./svgIcon";
-
-export interface GridExportLimits {
-  desired?: { label: string; value: string; unit: string };
-  current?: { label: string; value: string; unit: string };
-}
-
-export const getGridExportLimits = (
-  main: PowerFlowCardPlus,
-  entities: ConfigEntities
-): GridExportLimits => {
-  const desiredExportEntity = entities.grid?.desired_peak_demand_export_limit?.entity;
-  const currentExportEntity = entities.grid?.current_inverter_export_limit?.entity;
-  const desiredExportStateObj = desiredExportEntity ? main.hass.states[desiredExportEntity] : undefined;
-  const currentExportStateObj = currentExportEntity ? main.hass.states[currentExportEntity] : undefined;
-
-  const getSideValue = (stateObj?: { state?: string }) => {
-    if (!stateObj) return undefined;
-    if (offlineStr.includes(stateObj.state as any)) return "N/A";
-    return stateObj.state;
-  };
-
-  const result: GridExportLimits = {};
-
-  const desiredExportState = getSideValue(desiredExportStateObj);
-  if (desiredExportState !== undefined) {
-    const desiredExportUnit = entities.grid?.desired_peak_demand_export_limit?.unit || desiredExportStateObj?.attributes?.unit_of_measurement || "";
-    result.desired = {
-      label: entities.grid?.desired_peak_demand_export_limit?.label ?? "PeakDExpLim",
-      value: desiredExportState,
-      unit: desiredExportUnit,
-    };
-  }
-
-  const currentExportState = getSideValue(currentExportStateObj);
-  if (currentExportState !== undefined) {
-    const currentExportUnit = entities.grid?.current_inverter_export_limit?.unit || currentExportStateObj?.attributes?.unit_of_measurement || "";
-    result.current = {
-      label: entities.grid?.current_inverter_export_limit?.label ?? "InvExpLim",
-      value: currentExportState,
-      unit: currentExportUnit,
-    };
-  }
-
-  return result;
-};
 
 export const gridElement = (
   main: PowerFlowCardPlus,
   config: PowerFlowCardPlusConfig,
-  { entities, grid, templatesObj, hideExportLimits = false }: { entities: ConfigEntities; grid: any; templatesObj: TemplatesObj; hideExportLimits?: boolean }
+  { entities, grid, templatesObj }: { entities: ConfigEntities; grid: any; templatesObj: TemplatesObj }
 ) => {
   const gridReturnArrowIcon = entities.grid?.invert_arrow_direction ? "mdi:arrow-right" : "mdi:arrow-left";
   const gridConsumptionArrowIcon = entities.grid?.invert_arrow_direction ? "mdi:arrow-left" : "mdi:arrow-right";
-  const desiredExportEntity = entities.grid?.desired_peak_demand_export_limit?.entity;
-  const currentExportEntity = entities.grid?.current_inverter_export_limit?.entity;
-  const desiredExportStateObj = desiredExportEntity ? main.hass.states[desiredExportEntity] : undefined;
-  const currentExportStateObj = currentExportEntity ? main.hass.states[currentExportEntity] : undefined;
-
-  const getSideValue = (stateObj?: { state?: string }) => {
-    if (!stateObj) return undefined;
-    if (offlineStr.includes(stateObj.state as any)) return "N/A";
-    return stateObj.state;
-  };
-
-  const desiredExportState = getSideValue(desiredExportStateObj);
-  const currentExportState = getSideValue(currentExportStateObj);
-  const desiredExportUnit = entities.grid?.desired_peak_demand_export_limit?.unit || desiredExportStateObj?.attributes?.unit_of_measurement || "";
-  const currentExportUnit = entities.grid?.current_inverter_export_limit?.unit || currentExportStateObj?.attributes?.unit_of_measurement || "";
+  const outageTarget = grid.powerOutage?.entityGenerator ?? entities.grid?.power_outage?.entity;
+  const gridPrimaryTarget =
+    grid.powerOutage?.isOutage && outageTarget
+      ? outageTarget
+      : typeof entities.grid!.entity === "string"
+      ? entities.grid!.entity
+      : entities.grid!.entity.consumption!;
+  const gridReturnTarget = typeof entities.grid!.entity === "string" ? entities.grid!.entity : entities.grid!.entity.production!;
+  const gridConsumptionTarget = typeof entities.grid!.entity === "string" ? entities.grid!.entity : entities.grid!.entity.consumption!;
 
   return html`<div class="circle-container grid">
     <div
       class="circle"
       @click=${(e: { stopPropagation: () => void; target: HTMLElement }) => {
-        const outageTarget = grid.powerOutage?.entityGenerator ?? entities.grid?.power_outage?.entity;
-        const target =
-          grid.powerOutage?.isOutage && outageTarget
-            ? outageTarget
-            : typeof entities.grid!.entity === "string"
-            ? entities.grid!.entity
-            : entities.grid!.entity.consumption!;
-        main.openDetails(e, entities.grid?.tap_action, target);
+        main.openDetails(e, undefined, gridPrimaryTarget);
       }}
       @keyDown=${(e: { key: string; stopPropagation: () => void; target: HTMLElement }) => {
         if (e.key === "Enter") {
-          const outageTarget = grid.powerOutage?.entityGenerator ?? entities.grid?.power_outage?.entity;
-          const target =
-            grid.powerOutage?.isOutage && outageTarget
-              ? outageTarget
-              : typeof entities.grid!.entity === "string"
-              ? entities.grid!.entity
-              : entities.grid!.entity.consumption!;
-          main.openDetails(e, entities.grid?.tap_action, target);
+          main.openDetails(e, undefined, gridPrimaryTarget);
         }
       }}
     >
       ${generalSecondarySpan(main.hass, main, config, templatesObj, grid, "grid")}
-      ${renderEntitySvgIcon(grid.icon, "grid-icon")}
+      <span
+        class="grid-main-icon"
+        tabindex="0"
+        @click=${(e: { stopPropagation: () => void; target: HTMLElement }) => {
+          main.openDetails(e, entities.grid?.tap_action, gridPrimaryTarget);
+        }}
+        @keyDown=${(e: { key: string; stopPropagation: () => void; target: HTMLElement }) => {
+          if (e.key === "Enter") {
+            main.openDetails(e, entities.grid?.tap_action, gridPrimaryTarget);
+          }
+        }}
+      >
+        ${renderEntitySvgIcon(grid.icon, "grid-icon")}
+      </span>
       ${(entities.grid?.display_state === "two_way" ||
         entities.grid?.display_state === undefined ||
         (entities.grid?.display_state === "one_way_no_zero" && (grid.state.toGrid ?? 0) > 0) ||
@@ -111,13 +59,11 @@ export const gridElement = (
         ? html`<span
             class="return"
             @click=${(e: { stopPropagation: () => void; target: HTMLElement }) => {
-              const target = typeof entities.grid!.entity === "string" ? entities.grid!.entity : entities.grid!.entity.production!;
-              main.openDetails(e, entities.grid?.tap_action, target);
+              main.openDetails(e, undefined, gridReturnTarget);
             }}
             @keyDown=${(e: { key: string; stopPropagation: () => void; target: HTMLElement }) => {
               if (e.key === "Enter") {
-                const target = typeof entities.grid!.entity === "string" ? entities.grid!.entity : entities.grid!.entity.production!;
-                main.openDetails(e, entities.grid?.tap_action, target);
+                main.openDetails(e, undefined, gridReturnTarget);
               }
             }}
           >
@@ -141,13 +87,11 @@ export const gridElement = (
         ? html` <span
             class="consumption"
             @click=${(e: { stopPropagation: () => void; target: HTMLElement }) => {
-              const target = typeof entities.grid!.entity === "string" ? entities.grid!.entity : entities.grid!.entity.consumption!;
-              main.openDetails(e, entities.grid?.tap_action, target);
+              main.openDetails(e, undefined, gridConsumptionTarget);
             }}
             @keyDown=${(e: { key: string; stopPropagation: () => void; target: HTMLElement }) => {
               if (e.key === "Enter") {
-                const target = typeof entities.grid!.entity === "string" ? entities.grid!.entity : entities.grid!.entity.consumption!;
-                main.openDetails(e, entities.grid?.tap_action, target);
+                main.openDetails(e, undefined, gridConsumptionTarget);
               }
             }}
           >
@@ -161,36 +105,6 @@ export const gridElement = (
           </span>`
         : ""}
       ${grid.powerOutage?.isOutage && !grid.powerOutage?.entityGenerator ? html`<span class="grid power-outage">${grid.powerOutage.name}</span>` : ""}
-      ${desiredExportEntity && desiredExportState !== undefined && !hideExportLimits
-        ? html`<span
-            class="grid-desired-export-limit"
-            @click=${(e: { stopPropagation: () => void; target: HTMLElement }) => {
-              main.openDetails(e, entities.grid?.tap_action, desiredExportEntity);
-            }}
-            @keyDown=${(e: { key: string; stopPropagation: () => void; target: HTMLElement }) => {
-              if (e.key === "Enter") {
-                main.openDetails(e, entities.grid?.tap_action, desiredExportEntity);
-              }
-            }}
-          >
-            ${entities.grid?.desired_peak_demand_export_limit?.label ?? "PeakDExpLim"} ${desiredExportState}${desiredExportUnit ? ` ${desiredExportUnit}` : ""}
-          </span>`
-        : null}
-      ${currentExportEntity && currentExportState !== undefined && !hideExportLimits
-        ? html`<span
-            class="grid-current-export-limit"
-            @click=${(e: { stopPropagation: () => void; target: HTMLElement }) => {
-              main.openDetails(e, entities.grid?.tap_action, currentExportEntity);
-            }}
-            @keyDown=${(e: { key: string; stopPropagation: () => void; target: HTMLElement }) => {
-              if (e.key === "Enter") {
-                main.openDetails(e, entities.grid?.tap_action, currentExportEntity);
-              }
-            }}
-          >
-            ${entities.grid?.current_inverter_export_limit?.label ?? "InvExpLim"} ${currentExportState}${currentExportUnit ? ` ${currentExportUnit}` : ""}
-          </span>`
-        : null}
     </div>
     <span class="label">${grid.name}</span>
   </div>`;

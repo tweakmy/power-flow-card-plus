@@ -78,6 +78,52 @@ const mainSchema = {
       label: "Phase Power Blue",
       selector: { entity: {} },
     },
+    {
+      name: "charger.entity",
+      label: "Charger Power Entity",
+      selector: { entity: {} },
+    },
+    {
+      name: "charger.icon",
+      label: "Charger Icon",
+      selector: { icon: {} },
+    },
+    {
+      name: "charger.status_entity",
+      label: "Charger Status Entity",
+      selector: { entity: {} },
+    },
+    {
+      name: "charger.state_charging",
+      label: "Charger Active State",
+      selector: { text: {} },
+    },
+    {
+      name: "charger.invert_status",
+      label: "Invert Charger Status",
+      selector: { boolean: {} },
+    },
+    {
+      name: "charger.unit_of_measurement",
+      label: "Charger Unit",
+      selector: { text: {} },
+    },
+    {
+      name: "charger.decimals",
+      label: "Charger Decimals",
+      selector: { number: { mode: "box", min: 0, max: 6, step: 1 } },
+    },
+    {
+      name: "charger.unit_white_space",
+      label: "Charger Unit White Space",
+      default: true,
+      selector: { boolean: {} },
+    },
+    {
+      name: "charger.tap_action",
+      label: "Charger Tap Action",
+      selector: { ui_action: {} },
+    },
   ],
 };
 

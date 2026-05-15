@@ -53,16 +53,6 @@ interface Battery extends BaseConfigEntity {
 
 interface Grid extends BaseConfigEntity {
   power_outage: GridPowerOutage;
-  desired_peak_demand_export_limit?: {
-    entity: string;
-    label?: string;
-    unit?: string;
-  };
-  current_inverter_export_limit?: {
-    entity: string;
-    label?: string;
-    unit?: string;
-  };
   secondary_info?: SecondaryInfoType;
   color_circle: boolean | "production" | "consumption";
   color_value?: boolean;
@@ -83,6 +73,17 @@ interface Solar extends BaseConfigEntity {
 
 interface Home extends BaseConfigEntity {
   entity: string;
+  charger?: {
+    entity: string;
+    icon?: string;
+    status_entity?: string;
+    state_charging?: string;
+    invert_status?: boolean;
+    unit_of_measurement?: string;
+    unit_white_space?: boolean;
+    decimals?: number;
+    tap_action?: any;
+  };
   phase_power?: {
     red?: string;
     yellow?: string;

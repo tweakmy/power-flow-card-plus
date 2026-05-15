@@ -697,36 +697,6 @@ export const styles = css`
     }
   }
 
-  .circle-container.grid .grid-desired-export-limit {
-    position: absolute;
-    top: 3px;
-    left: -93px;
-    font-size: 10px;
-    font-weight: 500;
-    color: var(--primary-text-color);
-    white-space: nowrap;
-    cursor: var(--clickable-cursor);
-    text-align: right;
-  }
-
-  .circle-container.grid .grid-current-export-limit {
-    position: absolute;
-    top: 16px;
-    left: -72px;
-    font-size: 10px;
-    color: var(--secondary-text-color);
-    white-space: nowrap;
-    cursor: var(--clickable-cursor);
-    text-align: right;
-  }
-
-  @media (max-width: 1024px) {
-    .circle-container.grid .grid-desired-export-limit,
-    .circle-container.grid .grid-current-export-limit {
-      left: -72px;
-    }
-  }
-
   /* Mobile Layout */
   @media (max-width: 1024px) {
     .mobile-container {
@@ -775,21 +745,6 @@ export const styles = css`
       top: calc((var(--mobile-row-height) + var(--mobile-gap)) * 3);
     }
 
-    .mobile-circles-container .grid-desired-export-limit,
-    .mobile-circles-container .grid-current-export-limit {
-      position: absolute;
-      left: 12px;
-      width: auto;
-    }
-
-    .mobile-circles-container .grid-desired-export-limit {
-      top: calc(var(--mobile-row-height) + var(--mobile-gap) + 12px);
-    }
-
-    .mobile-circles-container .grid-current-export-limit {
-      top: calc(var(--mobile-row-height) + var(--mobile-gap) + 40px);
-    }
-
     .mobile-circles-container .home-label,
     .mobile-circles-container .home-usage {
       position: absolute;
@@ -836,9 +791,7 @@ export const styles = css`
     }
 
     .mobile-container .battery-temp,
-    .mobile-container .inverter-temp,
-    .mobile-container .circle-container.grid .grid-desired-export-limit,
-    .mobile-container .circle-container.grid .grid-current-export-limit {
+    .mobile-container .inverter-temp {
       font-size: 16.8px;
     }
 
@@ -890,12 +843,6 @@ export const styles = css`
       font-size: 16.8px;
     }
 
-    .mobile-container .circle-container.grid .grid-desired-export-limit,
-    .mobile-container .circle-container.grid .grid-current-export-limit {
-      left: auto;
-      right: 0;
-      text-align: right;
-    }
   }
 
 `;

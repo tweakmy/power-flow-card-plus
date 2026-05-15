@@ -15,7 +15,7 @@ import { html, LitElement, PropertyValues, svg, TemplateResult } from "lit";
 import { customElement, property, query, state } from "lit/decorators.js";
 import { batteryElement } from "./components/battery";
 import { flowElement } from "./components/flows";
-import { getGridExportLimits, gridElement } from "./components/grid";
+import { gridElement } from "./components/grid";
 import { homeElement } from "./components/home";
 import { individualLeftBottomElement } from "./components/individualLeftBottomElement";
 import { individualLeftTopElement } from "./components/individualLeftTopElement";
@@ -855,20 +855,6 @@ export class PowerFlowCardPlus extends LitElement {
       decimals: getMobileGridDecimals(grid.state.fromGrid || 0),
       watt_threshold: this._config.watt_threshold,
     });
-    const mobileGridExportLimits = getGridExportLimits(this, entities);
-    const mobileGridDesiredExportLine = mobileGridExportLimits.desired
-      ? `${mobileGridExportLimits.desired.label} ${mobileGridExportLimits.desired.value}${
-          mobileGridExportLimits.desired.unit ? ` ${mobileGridExportLimits.desired.unit}` : ""
-        }`
-      : null;
-    const mobileGridCurrentExportLine = mobileGridExportLimits.current
-      ? `${mobileGridExportLimits.current.label} ${mobileGridExportLimits.current.value}${
-          mobileGridExportLimits.current.unit ? ` ${mobileGridExportLimits.current.unit}` : ""
-        }`
-      : null;
-    const mobileGridExportTextX = -64;
-    const mobileGridDesiredExportY = -mobileR - Math.round(16 * mobileScale);
-    const mobileGridCurrentExportY = mobileR + Math.round(8 * mobileScale);
     const mobileGridToBatteryPower = Math.max(grid.state.toBattery || 0, 0);
     const mobileBatteryToGridPower = Math.max(battery.state.toGrid || 0, 0);
     const mobileBatteryGridPathColor =
@@ -980,6 +966,43 @@ export class PowerFlowCardPlus extends LitElement {
     const mobileHomePhaseYellowX = mobileHomePhaseRedX + mobileHomePhaseColumnGap;
     const mobileHomePhaseBlueX = mobileHomePhaseYellowX + mobileHomePhaseColumnGap;
     const mobileHomePhaseUnitX = mobileHomePhaseBlueX + mobileHomePhaseColumnGap;
+    const hasMobileHomeCharger = !!entities.home?.charger?.entity && !entities.home?.hide;
+    const mobileHomeChargerEntity = entities.home?.charger?.entity;
+    const mobileHomeChargerIcon = entities.home?.charger?.icon || "mdi:car-electric";
+    const mobileHomeChargerState = getEntityState(this.hass, entities.home?.charger?.entity);
+    const mobileHomeChargerStatusEntity = entities.home?.charger?.status_entity;
+    const mobileHomeChargerStatusState = mobileHomeChargerStatusEntity ? this.hass.states[mobileHomeChargerStatusEntity]?.state : undefined;
+    const mobileHomeChargerActiveState = entities.home?.charger?.state_charging ?? "on";
+    const mobileHomeChargerInvertStatus = entities.home?.charger?.invert_status ?? false;
+    const mobileHomeChargerStatusIsCharging = mobileHomeChargerStatusEntity
+      ? mobileHomeChargerStatusState === mobileHomeChargerActiveState
+      : (mobileHomeChargerState || 0) > 0;
+    const mobileHomeChargerIsCharging = mobileHomeChargerInvertStatus ? !mobileHomeChargerStatusIsCharging : mobileHomeChargerStatusIsCharging;
+    const mobileHomeChargerUnit = entities.home?.charger?.unit_of_measurement || "kW";
+    const mobileHomeChargerValue = displayValue(this.hass, this._config, mobileHomeChargerState, {
+      unit: mobileHomeChargerUnit,
+      unitWhiteSpace: entities.home?.charger?.unit_white_space,
+      decimals: entities.home?.charger?.decimals ?? this._config.kw_decimals,
+      watt_threshold: this._config.watt_threshold,
+    });
+    const mobileHomeChargerRadius = Math.round(12 * 1.25 * mobileScale);
+    const mobileHomeChargerIconSize = Math.round(14 * mobileScale);
+    const mobileHomeChargerYOffset = Math.round(26 * mobileScale);
+    const mobileHomeChargerCy = mobileHomeCy - mobileR - mobileHomeChargerYOffset;
+    const mobileHomeChargerTextY = Math.round(3 * mobileScale);
+    const mobileHomeChargerIconY = Math.round(4 * mobileScale);
+    const mobileHomeChargerValueFontSize = Math.max(Math.round(6 * mobileScale), 8);
+    const mobileHomeChargerConnectorStartY = mobileHomeCy - mobileR;
+    const mobileHomeChargerConnectorEndY = mobileHomeChargerCy + mobileHomeChargerRadius;
+    const mobileHomeChargerConnectorMidY = Math.round((mobileHomeChargerConnectorStartY + mobileHomeChargerConnectorEndY) / 2);
+    const mobileHomeChargerConnectorOffsetX = Math.max(Math.round(4 * mobileScale), 4);
+    const mobileHomeChargerConnectorGapY = Math.max(Math.round(3 * mobileScale), 3);
+    const mobileHomeChargerSwitchDotRadius = Math.max(Math.round(1.2 * mobileScale * 10) / 10, 1.2);
+    const mobileHomeChargerSwitchUpperY = mobileHomeChargerConnectorMidY - mobileHomeChargerConnectorGapY;
+    const mobileHomeChargerSwitchLowerY = mobileHomeChargerConnectorMidY + mobileHomeChargerConnectorGapY;
+    const mobileHomeChargerBladeTipX = mobileHomeCx + mobileHomeChargerConnectorOffsetX;
+    const mobileHomeChargerBladeTipY = mobileHomeChargerSwitchLowerY - 1;
+    const mobileHomeChargerTapTarget = mobileHomeChargerEntity;
 
     const mobileDotsEnabled = checkShouldShowDots(this._config);
     const mobileSolarBatteryPathD = `M ${mobileSolarCx},${mobileSolarCy + mobileR} L ${mobileBatteryCx},${mobileBatteryCy - mobileR}`;
@@ -1280,31 +1303,12 @@ export class PowerFlowCardPlus extends LitElement {
                     class="mobile-grid-group"
                     transform="translate(${mobileGridCx}, ${mobileGridCy})"
                   >
-                    ${mobileGridDesiredExportLine
-                      ? svg`<text
-                          x="${mobileGridExportTextX}"
-                          y="${mobileGridDesiredExportY}"
-                          text-anchor="start"
-                          dominant-baseline="hanging"
-                          style="fill: ${mobileSecondaryTextColor};"
-                          font-size="${mobileFontSizeSm}"
-                        >
-                          ${mobileGridDesiredExportLine}
-                        </text>`
-                      : svg``}
-                    ${mobileGridCurrentExportLine
-                      ? svg`<text
-                          x="${mobileGridExportTextX}"
-                          y="${mobileGridCurrentExportY}"
-                          text-anchor="start"
-                          dominant-baseline="hanging"
-                          style="fill: ${mobileSecondaryTextColor};"
-                          font-size="${mobileFontSizeSm}"
-                        >
-                          ${mobileGridCurrentExportLine}
-                        </text>`
-                      : svg``}
-                    <g transform="translate(${mobileIconX}, ${mobileIconY}) scale(${mobileIconSize / 24})">
+                    <g
+                      transform="translate(${mobileIconX}, ${mobileIconY}) scale(${mobileIconSize / 24})"
+                      @click=${(e: { stopPropagation: () => void; target: HTMLElement }) => {
+                        this.openDetails(e, entities.grid?.tap_action, mobileGridTapTarget);
+                      }}
+                    >
                       <path d="${mdiTransmissionTower}" style="fill: ${mobileGridIconColor}; stroke: none;" />
                     </g>
                     <text
@@ -1340,6 +1344,58 @@ export class PowerFlowCardPlus extends LitElement {
               : svg``}
 
             ${svg`
+                ${hasMobileHomeCharger
+                  ? mobileHomeChargerIsCharging
+                    ? svg`<line
+                        x1="${mobileHomeCx}"
+                        y1="${mobileHomeChargerConnectorStartY}"
+                        x2="${mobileHomeCx}"
+                        y2="${mobileHomeChargerConnectorEndY}"
+                        style="stroke: ${mobileHomeColor}; stroke-width: ${mobileStrokeWidth}; opacity: 0.9;"
+                      />`
+                    : svg`
+                        <line
+                          x1="${mobileHomeCx}"
+                          y1="${mobileHomeChargerConnectorStartY}"
+                          x2="${mobileHomeCx}"
+                          y2="${mobileHomeChargerSwitchLowerY}"
+                          style="stroke: ${mobileHomeColor}; stroke-width: ${mobileStrokeWidth}; opacity: 0.8;"
+                        />
+                        <line
+                          x1="${mobileHomeCx}"
+                          y1="${mobileHomeChargerSwitchUpperY}"
+                          x2="${mobileHomeChargerBladeTipX}"
+                          y2="${mobileHomeChargerBladeTipY}"
+                          style="stroke: ${mobileHomeColor}; stroke-width: ${mobileStrokeWidth}; opacity: 0.8;"
+                        />
+                        <line
+                          x1="${mobileHomeCx}"
+                          y1="${mobileHomeChargerSwitchUpperY}"
+                          x2="${mobileHomeCx}"
+                          y2="${mobileHomeChargerConnectorEndY}"
+                          style="stroke: ${mobileHomeColor}; stroke-width: ${mobileStrokeWidth}; opacity: 0.8;"
+                        />
+                        <line
+                          x1="${mobileHomeCx}"
+                          y1="${mobileHomeChargerSwitchUpperY}"
+                          x2="${mobileHomeChargerBladeTipX - Math.max(Math.round(2 * mobileScale), 2)}"
+                          y2="${mobileHomeChargerBladeTipY - Math.max(Math.round(2 * mobileScale), 2)}"
+                          style="stroke: ${mobileHomeColor}; stroke-width: ${mobileStrokeWidth}; opacity: 0.55;"
+                        />
+                        <circle
+                          cx="${mobileHomeCx}"
+                          cy="${mobileHomeChargerSwitchUpperY}"
+                          r="${mobileHomeChargerSwitchDotRadius}"
+                          style="fill: ${mobileHomeColor}; opacity: 0.8;"
+                        />
+                        <circle
+                          cx="${mobileHomeCx}"
+                          cy="${mobileHomeChargerSwitchLowerY}"
+                          r="${mobileHomeChargerSwitchDotRadius}"
+                          style="fill: ${mobileHomeColor}; opacity: 0.8;"
+                        />
+                      `
+                  : svg``}
                 <g class="mobile-home-group" transform="translate(${mobileHomeCx}, ${mobileHomeCy})">
                   <g transform="translate(${mobileIconX}, ${mobileIconY}) scale(${mobileIconSize / 24})">
                     <path d="${mdiHome}" style="fill: ${mobileHomeIconColor}; stroke: none;" />
@@ -1447,6 +1503,53 @@ export class PowerFlowCardPlus extends LitElement {
                   >${home.name}</text>
                 </g>
               `}
+
+            ${hasMobileHomeCharger
+              ? svg`
+                  <g class="mobile-home-charger-group" transform="translate(${mobileHomeCx}, ${mobileHomeChargerCy})">
+                    <g
+                      @click=${(e: { stopPropagation: () => void; target: HTMLElement }) => {
+                        this.openDetails(e, entities.home?.charger?.tap_action, mobileHomeChargerTapTarget);
+                      }}
+                    >
+                      <circle
+                        cx="0"
+                        cy="0"
+                        r="${mobileHomeChargerRadius}"
+                        style="fill: var(--card-background-color); stroke: ${mobileHomeColor}; stroke-width: ${mobileStrokeWidth}; opacity: ${
+                          mobileHomeChargerIsCharging ? 1 : 0.65
+                        };"
+                      />
+                      <foreignObject
+                        x="-${mobileHomeChargerIconSize / 2}"
+                        y="-${mobileHomeChargerIconSize / 2 + mobileHomeChargerIconY}"
+                        width="${mobileHomeChargerIconSize}"
+                        height="${mobileHomeChargerIconSize}"
+                      >
+                        <div
+                          xmlns="http://www.w3.org/1999/xhtml"
+                          style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;"
+                        >
+                          <ha-icon style="--mdc-icon-size:${mobileHomeChargerIconSize}px;color:${mobileHomeColor};" icon="${mobileHomeChargerIcon}"></ha-icon>
+                        </div>
+                      </foreignObject>
+                    </g>
+                    <text
+                      x="0"
+                      y="${mobileHomeChargerTextY}"
+                      text-anchor="middle"
+                      dominant-baseline="hanging"
+                      style="fill: ${mobileHomeColor};"
+                      font-size="${mobileHomeChargerValueFontSize}"
+                      @click=${(e: { stopPropagation: () => void; target: HTMLElement }) => {
+                        this.openDetails(e, undefined, mobileHomeChargerTapTarget);
+                      }}
+                    >
+                      ${mobileHomeChargerValue}
+                    </text>
+                  </g>
+                `
+              : svg``}
 
             ${battery.has
               ? svg`
