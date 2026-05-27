@@ -36,6 +36,10 @@ export interface BaseConfigEntity {
   tap_action?: ActionConfig;
 }
 
+export interface Workmode extends BaseConfigEntity {
+  entity: string;
+}
+
 export type GridPowerOutage = {
   entity: string;
   state_alert?: string;

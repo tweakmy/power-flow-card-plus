@@ -1,4 +1,4 @@
-import { BaseConfigEntity, ComboEntity, GridPowerOutage, IndividualDeviceType, SecondaryInfoType, type LovelaceCardConfig } from "./type.js";
+import { BaseConfigEntity, ComboEntity, GridPowerOutage, IndividualDeviceType, SecondaryInfoType, Workmode, type LovelaceCardConfig } from "./type.js";
 
 export type DisplayZeroLinesMode = "show" | "grey_out" | "transparency" | "hide" | "custom";
 
@@ -119,6 +119,7 @@ export type ConfigEntities = {
   solar?: Solar;
   home?: Home;
   fossil_fuel_percentage?: FossilFuelPercentage;
+  workmode?: Workmode;
   individual?: IndividualField;
 };
 

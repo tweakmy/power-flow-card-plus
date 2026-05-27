@@ -50,6 +50,7 @@ export const cardConfigStruct = assign(
       solar: optional(any()),
       home: optional(any()),
       fossil_fuel_percentage: optional(any()),
+      workmode: optional(any()),
       individual: optional(any()),
     }),
     sort_individual_devices: optional(boolean()),
@@ -104,6 +105,24 @@ export const entitiesSchema = memoizeOne((localize) => [
         type: "expandable",
         iconPath: mdiHome,
         schema: homeSchema,
+      },
+      {
+        title: "Work Mode",
+        name: "workmode",
+        type: "expandable",
+        iconPath: mdiWeatherSunny,
+        schema: [
+          {
+            name: "entity",
+            label: "Entity",
+            selector: { entity: {} },
+          },
+          {
+            name: "name",
+            label: "Label",
+            selector: { text: {} },
+          },
+        ],
       },
     ],
   },

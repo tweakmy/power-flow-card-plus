@@ -189,6 +189,29 @@ export class PowerFlowCardPlus extends LitElement {
 
     const initialNumericState = null as null | number;
 
+    const workmodeState = entities.workmode?.entity ? this.hass.states[entities.workmode.entity]?.state : undefined;
+    const workmodeVisible = workmodeState !== undefined && workmodeState !== "unknown" && workmodeState !== "unavailable";
+    const workmodeLabel = typeof workmodeState === "string" ? workmodeState.replace(/[_-]/g, " ").trim() : "";
+    const workmodeDisplay = workmodeLabel
+      .split(" ")
+      .filter(Boolean)
+      .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
+      .join(" ");
+    const normalizedWorkmode = workmodeLabel.toLowerCase();
+    const workmodeBackgroundColor = (() => {
+      switch (normalizedWorkmode) {
+        case "self use":
+          return "#16a34a";
+        case "force charge":
+          return "#dc2626";
+        case "force discharge":
+          return "#f97316";
+        default:
+          return "#6b7280";
+      }
+    })();
+    const workmodeTextColor = "#ffffff";
+
     const grid: GridObject = {
       entity: entities.grid?.entity,
       has: entities?.grid?.entity !== undefined,
@@ -1005,12 +1028,46 @@ export class PowerFlowCardPlus extends LitElement {
     const mobileHomeChargerTapTarget = mobileHomeChargerEntity;
 
     const mobileDotsEnabled = checkShouldShowDots(this._config);
-    const mobileSolarBatteryPathD = `M ${mobileSolarCx},${mobileSolarCy + mobileR} L ${mobileBatteryCx},${mobileBatteryCy - mobileR}`;
-    const mobileSolarGridPathD = `M ${mobileSolarCx},${mobileSolarCy + mobileR} L ${mobileSolarCx},${mobileGridCy} L ${mobileGridEdgeTowardSolarX},${mobileGridCy}`;
-    const mobileSolarHomePathD = `M ${mobileSolarCx},${mobileSolarCy + mobileR} L ${mobileSolarCx},${mobileHomeCy} L ${mobileHomeEdgeTowardSolarX},${mobileHomeCy}`;
-    const mobileGridHomePathD = `M ${mobileGridEdgeTowardHomeX},${mobileGridCy} L ${mobileSolarCx},${mobileGridCy} L ${mobileSolarCx},${mobileHomeCy} L ${mobileHomeEdgeTowardGridX},${mobileHomeCy}`;
-    const mobileBatteryHomePathD = `M ${mobileBatteryCx},${mobileBatteryCy - mobileR} L ${mobileBatteryCx},${mobileHomeCy} L ${mobileHomeEdgeTowardBatteryX},${mobileHomeCy}`;
-    const mobileBatteryGridPathD = `M ${mobileBatteryCx},${mobileBatteryCy - mobileR} L ${mobileBatteryCx},${mobileGridCy} L ${mobileGridEdgeTowardBatteryX},${mobileGridCy}`;
+    const getDesktopCurve = (fromX: number, fromY: number, toX: number, toY: number): string => {
+      const deltaX = toX - fromX;
+      const deltaY = toY - fromY;
+      const curveDistanceX = Math.max(Math.min(Math.abs(deltaX) * 0.35, 80), 12);
+      const curveDistanceY = Math.max(Math.min(Math.abs(deltaY) * 0.35, 80), 12);
+
+      if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        return `M ${fromX},${fromY} C ${fromX + Math.sign(deltaX) * curveDistanceX},${fromY} ${toX - Math.sign(deltaX) * curveDistanceX},${toY} ${toX},${toY}`;
+      }
+
+      return `M ${fromX},${fromY} C ${fromX},${fromY + Math.sign(deltaY) * curveDistanceY} ${toX},${toY - Math.sign(deltaY) * curveDistanceY} ${toX},${toY}`;
+    };
+    // L-shaped curve: vertical tangent at start, horizontal tangent at end (single bend, not S).
+    // Symmetric control polygon (k=0.5) so the curve bows out toward the diagonal instead of
+    // hugging the L-corner, keeping the start/end nearly-tangent overlap with the adjacent
+    // solar-battery vertical and grid-home horizontal lines down to ~5% of the curve length.
+    const getDesktopLCurve = (fromX: number, fromY: number, toX: number, toY: number): string => {
+      const k = 0.5;
+      const cp1Y = fromY + k * (toY - fromY);
+      const cp2X = toX - k * (toX - fromX);
+      return `M ${fromX},${fromY} C ${fromX},${cp1Y} ${cp2X},${toY} ${toX},${toY}`;
+    };
+    const mobileSolarBatteryPathD = isDesktopWideLayout
+      ? getDesktopCurve(mobileSolarCx, mobileSolarCy + mobileR, mobileBatteryCx, mobileBatteryCy - mobileR)
+      : `M ${mobileSolarCx},${mobileSolarCy + mobileR} L ${mobileBatteryCx},${mobileBatteryCy - mobileR}`;
+    const mobileSolarGridPathD = isDesktopWideLayout
+      ? getDesktopCurve(mobileSolarCx, mobileSolarCy + mobileR, mobileGridEdgeTowardSolarX, mobileGridCy)
+      : `M ${mobileSolarCx},${mobileSolarCy + mobileR} L ${mobileSolarCx},${mobileGridCy} L ${mobileGridEdgeTowardSolarX},${mobileGridCy}`;
+    const mobileSolarHomePathD = isDesktopWideLayout
+      ? getDesktopLCurve(mobileSolarCx + 3, mobileSolarCy + mobileR, mobileHomeEdgeTowardSolarX, mobileHomeCy - 3)
+      : `M ${mobileSolarCx},${mobileSolarCy + mobileR} L ${mobileSolarCx},${mobileHomeCy} L ${mobileHomeEdgeTowardSolarX},${mobileHomeCy}`;
+    const mobileGridHomePathD = isDesktopWideLayout
+      ? getDesktopCurve(mobileGridEdgeTowardHomeX, mobileGridCy, mobileHomeEdgeTowardGridX, mobileHomeCy)
+      : `M ${mobileGridEdgeTowardHomeX},${mobileGridCy} L ${mobileSolarCx},${mobileGridCy} L ${mobileSolarCx},${mobileHomeCy} L ${mobileHomeEdgeTowardGridX},${mobileHomeCy}`;
+    const mobileBatteryHomePathD = isDesktopWideLayout
+      ? getDesktopLCurve(mobileBatteryCx + 3, mobileBatteryCy - mobileR, mobileHomeEdgeTowardBatteryX, mobileHomeCy + 3)
+      : `M ${mobileBatteryCx},${mobileBatteryCy - mobileR} L ${mobileBatteryCx},${mobileHomeCy} L ${mobileHomeEdgeTowardBatteryX},${mobileHomeCy}`;
+    const mobileBatteryGridPathD = isDesktopWideLayout
+      ? getDesktopLCurve(mobileBatteryCx - 3, mobileBatteryCy - mobileR, mobileGridEdgeTowardBatteryX, mobileGridCy + 3)
+      : `M ${mobileBatteryCx},${mobileBatteryCy - mobileR} L ${mobileBatteryCx},${mobileGridCy} L ${mobileGridEdgeTowardBatteryX},${mobileGridCy}`;
 
     const mobileWirePower: Record<string, number> = {
       solarToBattery: solar.has && battery.has ? Math.max(solar.state.toBattery || 0, 0) : 0,
@@ -1093,6 +1150,11 @@ export class PowerFlowCardPlus extends LitElement {
           id="power-flow-card-plus"
           style=${this._config.style_card_content ? this._config.style_card_content : ""}
         >
+          ${workmodeVisible
+            ? html`<div class="workmode-badge" style="background:${workmodeBackgroundColor}; color:${workmodeTextColor};">
+                ${workmodeDisplay}
+              </div>`
+            : html``}
           <svg
             viewBox="0 0 ${mobileViewBoxWidth} ${mobileViewBoxHeight}"
             xmlns="http://www.w3.org/2000/svg"
@@ -1144,7 +1206,7 @@ export class PowerFlowCardPlus extends LitElement {
               ? svg`
                   <path
                     id="mobile-solar-home-path"
-                    d="M ${mobileSolarCx},${mobileSolarCy + mobileR} L ${mobileSolarCx},${mobileHomeCy} L ${mobileHomeEdgeTowardSolarX},${mobileHomeCy}"
+                    d="${mobileSolarHomePathD}"
                     style="fill: none; stroke: ${mobileSolarColor}; stroke-width: ${mobileStrokeWidth}; opacity: ${mobileLineOpacity(solar.state.toHome || 0)};"
                   />
                   ${checkShouldShowDots(this._config) && (solar.state.toHome || 0) > 0
@@ -1186,7 +1248,7 @@ export class PowerFlowCardPlus extends LitElement {
               ? svg`
                   <path
                     id="mobile-battery-home-path"
-                    d="M ${mobileBatteryCx},${mobileBatteryCy - mobileR} L ${mobileBatteryCx},${mobileHomeCy} L ${mobileHomeEdgeTowardBatteryX},${mobileHomeCy}"
+                    d="${mobileBatteryHomePathD}"
                     style="fill: none; stroke: ${mobileBatteryOutColor}; stroke-width: ${mobileStrokeWidth}; opacity: ${mobileLineOpacity(battery.state.toHome || 0)};"
                   />
                   ${checkShouldShowDots(this._config) && (battery.state.toHome || 0) > 0
@@ -1207,7 +1269,7 @@ export class PowerFlowCardPlus extends LitElement {
               ? svg`
                   <path
                     id="mobile-battery-grid-path"
-                    d="M ${mobileBatteryCx},${mobileBatteryCy - mobileR} L ${mobileBatteryCx},${mobileGridCy} L ${mobileGridEdgeTowardBatteryX},${mobileGridCy}"
+                    d="${mobileBatteryGridPathD}"
                     style="fill: none; stroke: ${mobileBatteryGridPathColor}; stroke-width: ${mobileStrokeWidth}; opacity: ${mobileLineOpacity(Math.max(grid.state.toBattery || 0, battery.state.toGrid || 0))};"
                   />
                   ${checkShouldShowDots(this._config) && (grid.state.toBattery || 0) > 0
