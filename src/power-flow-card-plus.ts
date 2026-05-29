@@ -1054,19 +1054,19 @@ export class PowerFlowCardPlus extends LitElement {
       ? getDesktopCurve(mobileSolarCx, mobileSolarCy + mobileR, mobileBatteryCx, mobileBatteryCy - mobileR)
       : `M ${mobileSolarCx},${mobileSolarCy + mobileR} L ${mobileBatteryCx},${mobileBatteryCy - mobileR}`;
     const mobileSolarGridPathD = isDesktopWideLayout
-      ? getDesktopCurve(mobileSolarCx, mobileSolarCy + mobileR, mobileGridEdgeTowardSolarX, mobileGridCy)
+      ? getDesktopLCurve(mobileSolarCx - 5, mobileSolarCy + mobileR, mobileGridEdgeTowardSolarX, mobileGridCy - 5)
       : `M ${mobileSolarCx},${mobileSolarCy + mobileR} L ${mobileSolarCx},${mobileGridCy} L ${mobileGridEdgeTowardSolarX},${mobileGridCy}`;
     const mobileSolarHomePathD = isDesktopWideLayout
-      ? getDesktopLCurve(mobileSolarCx + 3, mobileSolarCy + mobileR, mobileHomeEdgeTowardSolarX, mobileHomeCy - 3)
+      ? getDesktopLCurve(mobileSolarCx + 5, mobileSolarCy + mobileR, mobileHomeEdgeTowardSolarX, mobileHomeCy - 5)
       : `M ${mobileSolarCx},${mobileSolarCy + mobileR} L ${mobileSolarCx},${mobileHomeCy} L ${mobileHomeEdgeTowardSolarX},${mobileHomeCy}`;
     const mobileGridHomePathD = isDesktopWideLayout
       ? getDesktopCurve(mobileGridEdgeTowardHomeX, mobileGridCy, mobileHomeEdgeTowardGridX, mobileHomeCy)
       : `M ${mobileGridEdgeTowardHomeX},${mobileGridCy} L ${mobileSolarCx},${mobileGridCy} L ${mobileSolarCx},${mobileHomeCy} L ${mobileHomeEdgeTowardGridX},${mobileHomeCy}`;
     const mobileBatteryHomePathD = isDesktopWideLayout
-      ? getDesktopLCurve(mobileBatteryCx + 3, mobileBatteryCy - mobileR, mobileHomeEdgeTowardBatteryX, mobileHomeCy + 3)
+      ? getDesktopLCurve(mobileBatteryCx + 5, mobileBatteryCy - mobileR, mobileHomeEdgeTowardBatteryX, mobileHomeCy + 5)
       : `M ${mobileBatteryCx},${mobileBatteryCy - mobileR} L ${mobileBatteryCx},${mobileHomeCy} L ${mobileHomeEdgeTowardBatteryX},${mobileHomeCy}`;
     const mobileBatteryGridPathD = isDesktopWideLayout
-      ? getDesktopLCurve(mobileBatteryCx - 3, mobileBatteryCy - mobileR, mobileGridEdgeTowardBatteryX, mobileGridCy + 3)
+      ? getDesktopLCurve(mobileBatteryCx - 5, mobileBatteryCy - mobileR, mobileGridEdgeTowardBatteryX, mobileGridCy + 5)
       : `M ${mobileBatteryCx},${mobileBatteryCy - mobileR} L ${mobileBatteryCx},${mobileGridCy} L ${mobileGridEdgeTowardBatteryX},${mobileGridCy}`;
 
     const mobileWirePower: Record<string, number> = {
@@ -1185,7 +1185,7 @@ export class PowerFlowCardPlus extends LitElement {
               ? svg`
                   <path
                     id="mobile-solar-grid-path"
-                    d="M ${mobileSolarCx},${mobileSolarCy + mobileR} L ${mobileSolarCx},${mobileGridCy} L ${mobileGridEdgeTowardSolarX},${mobileGridCy}"
+                    d="${mobileSolarGridPathD}"
                     style="fill: none; stroke: ${mobileSolarIsZeroGeneration ? mobileSolarZeroColor : mobileGridReturnColor}; stroke-width: ${mobileStrokeWidth}; opacity: ${mobileLineOpacity(solar.state.toGrid || 0)};"
                   />
                   ${checkShouldShowDots(this._config) && (solar.state.toGrid || 0) > 0
@@ -1244,7 +1244,7 @@ export class PowerFlowCardPlus extends LitElement {
                 `
               : svg``}
 
-            ${battery.has && !entities.home?.hide && (battery.state.toHome || 0) > 0
+            ${battery.has && !entities.home?.hide && showLine(this._config, battery.state.toHome || 0)
               ? svg`
                   <path
                     id="mobile-battery-home-path"
@@ -1625,6 +1625,7 @@ export class PowerFlowCardPlus extends LitElement {
                         this.openDetails(e, entities.battery?.tap_action, mobileBatteryTapTarget);
                       }}
                     >
+                      <rect x="0" y="0" width="24" height="24" fill="transparent" pointer-events="all" />
                       <path d="${mobileBatteryIconPath}" style="fill: ${mobileBatteryColor}; stroke: none;" />
                     </g>
                     ${mobileShowBatteryStateOfCharge
